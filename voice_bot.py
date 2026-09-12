@@ -13,8 +13,20 @@ import base64
 import io
 import urllib.request
 
-# نفس الصوت الافتراضي المستخدم في /api/assistant/voice/tts في app.py
+# الصوت الافتراضي: رجل شاب يقرأ العربية الفصحى بوضوح — طابع مذيع وثائقي
+# (نمط المعلق في National Geographic) بلا لهجة.
+# يمكن تغييره دون تعديل الكود عبر إضافة مفتاح tts_voice في جدول الإعدادات.
+# أصوات فصحى رجالية جيدة (Edge TTS):
+#   ar-SA-HamedNeural   فصحى واضحة، الأقرب لصوت المذيع  (الافتراضي)
+#   ar-AE-FahedNeural   فصحى شابة
+#   ar-SY-LaithNeural   فصحى هادئة
+#   ar-EG-ShakirNeural  فصحى دافئة
 DEFAULT_TTS_VOICE = 'ar-SA-HamedNeural'
+# سلسلة تراجع تلقائي إذا فشل الصوت الأساسي (تعطل أو غير مدعوم)
+VOICE_FALLBACKS = ['ar-AE-FahedNeural', 'ar-SY-LaithNeural', 'ar-EG-ShakirNeural']
+# إيقاع أقرب للطبيعة البشرية: إبطاء طفيف + نغمة أدنى قليلاً (أدفأ وأقل آلية)
+TTS_RATE = '-5%'
+TTS_PITCH = '-3Hz'
 TELEGRAM_API_BASE = 'https://api.telegram.org/bot'
 # أقصى مدة رسالة صوتية مقبولة — حماية من استهلاك الذاكرة وحصة Groq المجانية
 # ووقت حجب المعالجة (تيليجرام يرسل duration بالثواني ضمن بيانات الرسالة)
@@ -25,35 +37,59 @@ MAX_VOICE_DURATION_SECONDS = 60
 # مستقبلي بين نسخ مختلفة من نفس المنطق (كما حدث سابقاً).
 from text_utils import clean_text_for_speech as _clean_text_for_tts
 
+def _resolve_voice():
+    """الصوت المطلوب: من إعدادات العيادة (مفتاح tts_voice) أو الافتراضي."""
+    try:
+        import app as clinic_app
+        v = (clinic_app.get_setting('tts_voice') or '').strip()
+        if v:
+            return v
+    except Exception:
+        pass
+    return DEFAULT_TTS_VOICE
+
+
+def _edge_tts_bytes(text, voice):
+    """توليد صوت عبر Edge TTS بصوت محدد — يعيد bytes أو يرفع استثناء."""
+    import asyncio
+    import edge_tts
+
+    async def _gen():
+        communicate = edge_tts.Communicate(text, voice=voice,
+                                           rate=TTS_RATE, pitch=TTS_PITCH)
+        audio = b''
+        async for chunk in communicate.stream():
+            if chunk.get('type') == 'audio':
+                audio += chunk.get('data', b'')
+        return audio
+
+    return asyncio.run(_gen())
+
+
 def tts_to_mp3(text, voice=None):
     """تحويل نص إلى mp3: Edge TTS أولاً (صوت طبيعي مجاني) ثم gTTS احتياطاً.
+    يجرب الصوت المطلوب ثم سلسلة الأصوات البديلة تلقائياً عند فشل أحدها.
     يعيد bytes للملف الصوتي أو None عند فشل الطريقتين.
     """
     # تطبيق التنظيف فوراً كخطوة أولى
     text = _clean_text_for_tts(text)
-    
+
     text = (text or '').strip()
     if not text:
         return None
     text = text[:800]
-    voice = voice or DEFAULT_TTS_VOICE
-    # المحاولة 1: Edge TTS
-    try:
-        import asyncio
-        import edge_tts
-        async def _gen():
-            communicate = edge_tts.Communicate(text, voice=voice)
-            audio = b''
-            async for chunk in communicate.stream():
-                if chunk.get('type') == 'audio':
-                    audio += chunk.get('data', b'')
-            return audio
-        audio = asyncio.run(_gen())
-        if audio:
-            return audio
-    except Exception as e:
-        print(f'[voice_bot] فشل Edge TTS، التراجع إلى gTTS: {e}')
-    # المحاولة 2: gTTS
+    voice = voice or _resolve_voice()
+    candidates = [voice] + [v for v in VOICE_FALLBACKS if v != voice]
+    for cand in candidates:
+        try:
+            audio = _edge_tts_bytes(text, cand)
+            if audio:
+                if cand != voice:
+                    print(f'[voice_bot] الصوت "{voice}" فشل — استُخدم البديل "{cand}"')
+                return audio
+        except Exception as e:
+            print(f'[voice_bot] فشل Edge TTS بالصوت {cand}: {e}')
+    # المحاولة الأخيرة: gTTS
     try:
         from gtts import gTTS
         buf = io.BytesIO()
@@ -98,6 +134,44 @@ def send_telegram_voice(chat_id, audio_bytes, caption=None):
             return False, result.get('description', 'خطأ غير معروف')
     except Exception as e:
         return False, str(e)
+
+def send_telegram_audio(chat_id, audio_bytes, caption=None, performer='مساعد العيادة'):
+    """إرسال الملف الصوتي كرسالة صوتية عادية (sendAudio) — خطة بديلة
+    إذا رفض تيليجرام الصيغة في sendVoice (يتطلب OGG/Opus حصراً).
+    يعيد (نجاح: bool، رسالة خطأ: str|None).
+    """
+    import app as clinic_app
+    token = clinic_app.telegram_bot_token()
+    if not token:
+        return False, 'لا يوجد توكن بوت تيليجرام'
+    boundary = 'ClinicAudioBoundary9MA4YWxkTrZu0gW'
+    parts = []
+    parts.append(f'--{boundary}\r\nContent-Disposition: form-data; '
+                 f'name="chat_id"\r\n\r\n{chat_id}\r\n'.encode())
+    if caption:
+        parts.append(f'--{boundary}\r\nContent-Disposition: form-data; '
+                     f'name="caption"\r\n\r\n{caption[:1000]}\r\n'.encode())
+    parts.append(f'--{boundary}\r\nContent-Disposition: form-data; '
+                 f'name="performer"\r\n\r\n{performer}\r\n'.encode())
+    parts.append(f'--{boundary}\r\nContent-Disposition: form-data; '
+                 f'name="audio"; filename="reply.mp3"\r\n'
+                 f'Content-Type: audio/mpeg\r\n\r\n'.encode())
+    parts.append(audio_bytes)
+    parts.append(f'\r\n--{boundary}--\r\n'.encode())
+    req = urllib.request.Request(
+        f'{TELEGRAM_API_BASE}{token}/sendAudio',
+        data=b''.join(parts), method='POST',
+        headers={'Content-Type': f'multipart/form-data; boundary={boundary}',
+                 'User-Agent': 'Mozilla/5.0 (compatible; ClinicApp/1.0)'})
+    try:
+        with urllib.request.urlopen(req, timeout=60) as resp:
+            result = __import__('json').loads(resp.read().decode('utf-8'))
+            if result.get('ok'):
+                return True, None
+            return False, result.get('description', 'خطأ غير معروف')
+    except Exception as e:
+        return False, str(e)
+
 
 def _download_telegram_file(file_id):
     """تنزيل ملف من خوادم تيليجرام عبر getFile — يعيد bytes أو None."""
@@ -237,12 +311,21 @@ def _run_with_context(msg, chat_id, first_name):
             print(f'[voice_bot] خطأ في معالجة الرسالة الصوتية: {e}')
 
 def reply_with_voice(chat_id, text):
-    """إرسال رد المساعد صوتياً + نصياً (يُستدعى من _handle_doctor_assistant)."""
+    """إرسال رد المساعد صوتياً + نصياً.
+    1) Edge TTS/gTTS لتوليد الصوت — إن فشلا يُسجل ذلك بوضوح.
+    2) sendVoice (ملاحظة صوتية) — وإن رفض تيليجرام الصيغة يُحاول
+       تلقائياً كرسالة صوتية عادية sendAudio حتى لا يخسر المريض الرد.
+    """
     import app as clinic_app
     audio = tts_to_mp3(text)
     if not audio:
+        print('[voice_bot] ⚠️ تعذّر توليد الصوت (فشل Edge TTS وgTTS معاً) — أُرسل النص فقط')
         return False
     ok, err = send_telegram_voice(chat_id, audio)
-    if not ok:
-        print(f'[voice_bot] فشل إرسال الصوت: {err}')
-    return ok
+    if ok:
+        return True
+    print(f'[voice_bot] sendVoice رفض الصيغة: {err} — محاولة الإرسال كرسالة صوتية عادية (sendAudio)')
+    ok2, err2 = send_telegram_audio(chat_id, audio)
+    if not ok2:
+        print(f'[voice_bot] ❌ فشل الإرسال الصوتي بالطريقتين: {err2}')
+    return ok2

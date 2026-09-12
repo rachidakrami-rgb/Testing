@@ -809,6 +809,8 @@ def _handle_patient_ai_message(chat_id, patient, incoming, voice_reply=False):
     except Exception as e:
         print(f'خطأ في المساعد الذكي للمريض: {e}')
         message = 'عذراً، حدث خطأ أثناء معالجة طلبك. يمكنك مراسلة الطبيب مباشرة من القائمة الرئيسية.'
+    from text_utils import clean_text_for_telegram
+    message = clean_text_for_telegram(message)
     telegram_send_message(chat_id, message, buttons=_patient_ai_chat_menu())
     if voice_reply:
         try:
@@ -1569,6 +1571,7 @@ def _handle_doctor_assistant(chat_id, incoming, voice_reply=False):
     """توجيه رسالة الطبيب الحرة للمساعد الذكي ومعالجة الرد."""
     import assistant
     import ai_client
+    from text_utils import clean_text_for_telegram
     if not ai_client.is_configured():
         telegram_send_message(
             chat_id,
@@ -1585,12 +1588,13 @@ def _handle_doctor_assistant(chat_id, incoming, voice_reply=False):
                               buttons=_doctor_menu_buttons())
         return
     if rtype == 'text':
-        telegram_send_message(chat_id, result.get('message', ''),
+        msg = clean_text_for_telegram(result.get('message', ''))
+        telegram_send_message(chat_id, msg,
                               buttons=_doctor_menu_buttons())
         if voice_reply:
             try:
                 import voice_bot
-                voice_bot.reply_with_voice(chat_id, result.get('message', ''))
+                voice_bot.reply_with_voice(chat_id, msg)
             except Exception as e:
                 print(f'خطأ في الرد الصوتي: {e}')
         return
@@ -1604,7 +1608,7 @@ def _handle_doctor_assistant(chat_id, incoming, voice_reply=False):
         }
         preview = result.get('preview', {})
         summary = result.get('summary', '')
-        msg = result.get('message', '') or summary
+        msg = clean_text_for_telegram(result.get('message', '') or summary)
         # بنِ نص المعاينة
         lines = [f'🤖 <b>المساعد:</b>\n{msg}']
         if preview:
@@ -4332,6 +4336,9 @@ def assistant_chat():
     # استخدم session_id من جلسة Flask (كل تبويب = جلسة منفصلة عبر client_id)
     session_id = data.get('client_id') or f"doc_{session.get('doctor_id', 0)}"
     result = assistant.chat(session_id, message)
+    if isinstance(result, dict) and result.get('message'):
+        from text_utils import clean_text_for_telegram
+        result['message'] = clean_text_for_telegram(result['message'])
     return jsonify(result)
 
 
@@ -4411,41 +4418,20 @@ def assistant_voice_tts():
     if not text:
         return jsonify({'error': 'لا يوجد نص'}), 400
     text = text[:800]  # حد أقصى معقول لطول النص المنطوق
-    EDGE_TTS_VOICE = 'ar-SA-HamedNeural'
-    # المحاولة 1: Edge TTS (صوت طبيعي عصبي)
+    # توحيد كامل مع محرك صوت تيليجرام (voice_bot): نفس الأصوات، نفس الإيقاع
+    # البشري، نفس سلسلة الأصوات البديلة، ونفس التنظيف (بلا رموز أو مصطلحات
+    # إنجليزية — عدا رقم التذكرة — والوقت يُنطق عربي طبيعي مثل:
+    # الثامنة ودقيقة، صباحاً). لتغيير الصوت: مفتاح tts_voice في الإعدادات.
     try:
-        import asyncio
-        import edge_tts
-
-        async def _gen():
-            communicate = edge_tts.Communicate(text, voice=EDGE_TTS_VOICE)
-            audio = b''
-            async for chunk in communicate.stream():
-                if chunk.get('type') == 'audio':
-                    audio += chunk.get('data', b'')
-            return audio
-
-        audio_bytes = asyncio.run(_gen())
-        if audio_bytes:
-            return Response(audio_bytes, mimetype='audio/mpeg', headers={'Cache-Control': 'no-store'})
-    except Exception as e:
-        print(f'[TTS] فشل Edge TTS، التراجع إلى gTTS: {e}')
-    # المحاولة 2 (احتياطية): gTTS
-    try:
-        from gtts import gTTS
-        import io
-        buf = io.BytesIO()
-        gTTS(text=text, lang='ar').write_to_fp(buf)
-        buf.seek(0)
-        return Response(buf.read(), mimetype='audio/mpeg', headers={
-            'Cache-Control': 'no-store',
-        })
-    except ImportError:
-        return jsonify({'error': 'لا توجد مكتبة TTS مثبَّتة على الخادم. نفّذ: pip install -r requirements.txt'}), 500
+        import voice_bot
+        audio_bytes = voice_bot.tts_to_mp3(text)
     except Exception as e:
         import traceback
-        traceback.print_exc()  # تفاصيل كاملة في سجل الخادم (console/logs) للتشخيص
+        traceback.print_exc()
         return jsonify({'error': f'فشل توليد الصوت: {e}'}), 500
+    if audio_bytes:
+        return Response(audio_bytes, mimetype='audio/mpeg', headers={'Cache-Control': 'no-store'})
+    return jsonify({'error': 'فشل توليد الصوت: تعذّر الوصول لخدمات النطق (Edge TTS وgTTS)'}), 500
 
 
 @app.route('/api/assistant/status')
