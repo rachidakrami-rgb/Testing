@@ -1,0 +1,47 @@
+{% extends 'base_public.html' %}
+{% block title %}بوابة المريض - {{ clinic_name }}{% endblock %}
+
+{% block content %}
+<div class="text-center mb-4">
+  <h2><i class="fas fa-hand-holding-heart text-success"></i> بوابة المريض</h2>
+  <p class="text-muted">اختر الخدمة التي تحتاجها</p>
+</div>
+
+<div class="row g-4">
+  <div class="col-md-4">
+    <a href="{{ url_for('portal_booking') }}" class="choice-card bg-white">
+      <i class="fas fa-calendar-plus fa-3x text-primary mb-3"></i>
+      <h5>طلب حجز موعد</h5>
+      <p class="text-muted small mb-0">اختر من الأوقات المتاحة واحصل على رقم تذكرة</p>
+    </a>
+  </div>
+  <div class="col-md-4">
+    <a href="{{ url_for('portal_availability') }}" class="choice-card bg-white">
+      <i class="fas fa-calendar-alt fa-3x text-info mb-3"></i>
+      <h5>جدول المواعيد المتاحة</h5>
+      <p class="text-muted small mb-0">استعرض أيام وساعات العمل المتاحة</p>
+    </a>
+  </div>
+  <div class="col-md-4">
+    <a href="{{ url_for('portal_special') }}" class="choice-card bg-white">
+      <i class="fas fa-star fa-3x text-warning mb-3"></i>
+      <h5>طلب جلسة خاصة</h5>
+      <p class="text-muted small mb-0">خارج أوقات العمل مع التكفل بمصاريف النقل</p>
+    </a>
+  </div>
+  <div class="col-md-4">
+    <a href="{{ url_for('portal_ticket') }}" class="choice-card bg-white">
+      <i class="fas fa-ticket fa-3x text-secondary mb-3"></i>
+      <h5>متابعة حالة الحجز</h5>
+      <p class="text-muted small mb-0">أدخل رقم التذكرة لمعرفة الحالة والتاريخ والساعة</p>
+    </a>
+  </div>
+  <div class="col-md-4">
+    <a href="{{ url_for('portal_contact') }}" class="choice-card bg-white">
+      <i class="fas fa-envelope-open-text fa-3x text-success mb-3"></i>
+      <h5>مراسلة الطبيب</h5>
+      <p class="text-muted small mb-0">أرسل استفسارك مباشرة وتابع رد الطبيب هنا</p>
+    </a>
+  </div>
+</div>
+{% endblock %}

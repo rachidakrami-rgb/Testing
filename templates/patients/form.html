@@ -1,0 +1,102 @@
+{% extends 'base.html' %}
+{% block title %}{% if patient %}تعديل مريض{% else %}مريض جديد{% endif %} - {{ clinic_name }}{% endblock %}
+{% block page_title %}{% if patient %}تعديل بيانات المريض{% else %}إضافة مريض جديد{% endif %}{% endblock %}
+{% block breadcrumb %}<a href="{{ url_for('patients_list') }}">المرضى</a> / {% if patient %}تعديل{% else %}جديد{% endif %}{% endblock %}
+
+{% block content %}
+<div class="card">
+  <div class="card-header">
+    <i class="fas fa-user-edit text-primary"></i> البيانات الشخصية
+  </div>
+  <div class="card-body">
+    <form method="post">
+      <div class="row g-3">
+        <div class="col-md-4">
+          <label class="form-label">الاسم الأول *</label>
+          <input type="text" name="first_name" class="form-control" value="{{ patient.first_name if patient else '' }}" required>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">اسم العائلة *</label>
+          <input type="text" name="last_name" class="form-control" value="{{ patient.last_name if patient else '' }}" required>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">الجنس</label>
+          <select name="gender" class="form-select">
+            <option value="">-- اختر --</option>
+            <option value="ذكر" {% if patient and patient.gender == 'ذكر' %}selected{% endif %}>ذكر</option>
+            <option value="أنثى" {% if patient and patient.gender == 'أنثى' %}selected{% endif %}>أنثى</option>
+          </select>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">تاريخ الميلاد</label>
+          <input type="date" name="birth_date" class="form-control" value="{{ patient.birth_date.strftime('%Y-%m-%d') if patient and patient.birth_date else '' }}">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">رقم الهاتف</label>
+          <input type="text" name="phone" class="form-control" value="{{ patient.phone if patient else '' }}">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">البريد الإلكتروني</label>
+          <input type="email" name="email" class="form-control" value="{{ patient.email if patient else '' }}">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">معرف تيليجرام (chat_id)</label>
+          <input type="text" name="telegram_chat_id" class="form-control" value="{{ patient.telegram_chat_id if patient else '' }}"
+                 placeholder="يُملأ تلقائياً عبر البوت، أو أدخله يدوياً">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">الوظيفة</label>
+          <input type="text" name="job" class="form-control" value="{{ patient.job if patient else '' }}">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">الحالة الاجتماعية</label>
+          <select name="marital_status" class="form-select">
+            <option value="">-- اختر --</option>
+            {% for s in ['أعزب','متزوج','مطلق','أرمل'] %}
+            <option value="{{ s }}" {% if patient and patient.marital_status == s %}selected{% endif %}>{{ s }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">العنوان</label>
+          <input type="text" name="address" class="form-control" value="{{ patient.address if patient else '' }}">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">جهة اتصال للطوارئ</label>
+          <input type="text" name="emergency_contact" class="form-control" value="{{ patient.emergency_contact if patient else '' }}">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">هاتف الطوارئ</label>
+          <input type="text" name="emergency_phone" class="form-control" value="{{ patient.emergency_phone if patient else '' }}">
+        </div>
+      </div>
+
+      <hr class="my-4">
+      <h6 class="text-primary mb-3"><i class="fas fa-notes-medical"></i> التاريخ الطبي</h6>
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label class="form-label">التاريخ المرضي</label>
+          <textarea name="medical_history" class="form-control" rows="3">{{ patient.medical_history if patient else '' }}</textarea>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">الأمراض المزمنة</label>
+          <textarea name="chronic_diseases" class="form-control" rows="3">{{ patient.chronic_diseases if patient else '' }}</textarea>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">الأدوية الحالية</label>
+          <textarea name="current_medications" class="form-control" rows="3">{{ patient.current_medications if patient else '' }}</textarea>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">ملاحظات</label>
+          <textarea name="notes" class="form-control" rows="3">{{ patient.notes if patient else '' }}</textarea>
+        </div>
+      </div>
+
+      <div class="mt-4">
+        <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> حفظ البيانات</button>
+        <a href="{{ url_for('patients_list') }}" class="btn btn-outline-secondary">إلغاء</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

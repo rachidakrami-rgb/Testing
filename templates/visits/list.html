@@ -1,0 +1,53 @@
+{% extends 'base.html' %}
+{% block title %}الزيارات - {{ clinic_name }}{% endblock %}
+{% block page_title %}سجل الزيارات{% endblock %}
+{% block breadcrumb %}كل الزيارات والعلاجات{% endblock %}
+
+{% block content %}
+<div class="card">
+  <div class="card-header">
+    <span><i class="fas fa-clipboard-list text-primary"></i> الزيارات ({{ visits.total }})</span>
+    <a href="{{ url_for('visit_new') }}" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> زيارة جديدة</a>
+  </div>
+  <div class="card-body" style="padding:0">
+    {% if visits.items %}
+    <div class="table-responsive">
+      <table class="table">
+        <thead><tr><th>التاريخ</th><th>المريض</th><th>الشكوى</th><th>التشخيص</th><th>العلاج</th><th>الرسوم</th><th></th></tr></thead>
+        <tbody>
+          {% for v in visits.items %}
+          <tr>
+            <td>{{ v.visit_date.strftime('%Y-%m-%d') }}</td>
+            <td><a href="{{ url_for('patient_view', id=v.patient_id) }}">{{ v.patient.full_name }}</a></td>
+            <td>{{ v.chief_complaint[:40] if v.chief_complaint else '-' }}</td>
+            <td>{{ v.diagnosis[:40] if v.diagnosis else '-' }}</td>
+            <td>{{ v.treatment[:40] if v.treatment else '-' }}</td>
+            <td>{{ v.fee }} د.ج</td>
+            <td><a href="{{ url_for('visit_view', id=v.id) }}" class="btn btn-sm btn-outline-primary"><i class="fas fa-eye"></i></a></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% if visits.pages > 1 %}
+    <nav class="p-3">
+      <ul class="pagination pagination-sm mb-0">
+        <li class="page-item {% if not visits.has_prev %}disabled{% endif %}">
+          <a class="page-link" href="{{ url_for('visits_list', page=visits.prev_num) if visits.has_prev else '#' }}">السابق</a>
+        </li>
+        {% for p in visits.iter_pages() %}
+          {% if p %}<li class="page-item {% if p == visits.page %}active{% endif %}"><a class="page-link" href="{{ url_for('visits_list', page=p) }}">{{ p }}</a></li>
+          {% else %}<li class="page-item disabled"><span class="page-link">…</span></li>{% endif %}
+        {% endfor %}
+        <li class="page-item {% if not visits.has_next %}disabled{% endif %}">
+          <a class="page-link" href="{{ url_for('visits_list', page=visits.next_num) if visits.has_next else '#' }}">التالي</a>
+        </li>
+      </ul>
+    </nav>
+    {% endif %}
+    {% else %}
+    <div class="empty-state"><i class="fas fa-clipboard"></i><p>لا توجد زيارات مسجلة</p></div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,54 @@
+{% extends 'base.html' %}
+{% block title %}{{ invoice.invoice_number }} - {{ clinic_name }}{% endblock %}
+{% block page_title %}فاتورة {{ invoice.invoice_number }}{% endblock %}
+{% block breadcrumb %}<a href="{{ url_for('billing_list') }}">الفواتير</a> / {{ invoice.invoice_number }}{% endblock %}
+
+{% block content %}
+<div class="card">
+  <div class="card-header">
+    <span><i class="fas fa-file-invoice text-primary"></i> تفاصيل الفاتورة</span>
+    <span class="badge badge-{{ invoice.status }}">{{ {'paid':'مسددة','partial':'جزئي','unpaid':'غير مسددة'}.get(invoice.status, invoice.status) }}</span>
+  </div>
+  <div class="card-body">
+    <div class="row g-3 mb-4">
+      <div class="col-md-6"><label class="form-label text-muted">المريض</label><h5><a href="{{ url_for('patient_view', id=invoice.patient_id) }}">{{ invoice.patient.full_name }}</a></h5></div>
+      <div class="col-md-3"><label class="form-label text-muted">رقم الفاتورة</label><h5>{{ invoice.invoice_number }}</h5></div>
+      <div class="col-md-3"><label class="form-label text-muted">التاريخ</label><h5>{{ invoice.invoice_date.strftime('%Y-%m-%d') }}</h5></div>
+      <div class="col-12"><label class="form-label text-muted">الوصف</label><p>{{ invoice.description or '-' }}</p></div>
+      <div class="col-md-4"><label class="form-label text-muted">المبلغ الإجمالي</label><h4 class="text-primary">{{ invoice.amount }} د.ج</h4></div>
+      <div class="col-md-4"><label class="form-label text-muted">المدفوع</label><h4 class="text-success">{{ invoice.paid_amount }} د.ج</h4></div>
+      <div class="col-md-4"><label class="form-label text-muted">المتبقي</label><h4 class="text-danger">{{ invoice.balance }} د.ج</h4></div>
+      <div class="col-md-6"><label class="form-label text-muted">طريقة الدفع</label><p>{{ {'cash':'نقدي','card':'بطاقة','transfer':'تحويل'}.get(invoice.payment_method, '-') }}</p></div>
+      {% if invoice.notes %}<div class="col-12"><label class="form-label text-muted">ملاحظات</label><p>{{ invoice.notes }}</p></div>{% endif %}
+    </div>
+
+    {% if invoice.status != 'paid' %}
+    <hr>
+    <h6 class="text-primary"><i class="fas fa-money-bill-wave"></i> تسجيل دفعة</h6>
+    <form method="post" action="{{ url_for('billing_pay', id=invoice.id) }}" class="row g-2 align-items-end">
+      <div class="col-md-3">
+        <label class="form-label">مبلغ الدفعة</label>
+        <input type="number" name="payment" class="form-control" step="0.01" value="{{ invoice.balance }}" max="{{ invoice.balance }}">
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">طريقة الدفع</label>
+        <select name="payment_method" class="form-select">
+          <option value="cash">نقدي</option>
+          <option value="card">بطاقة</option>
+          <option value="transfer">تحويل</option>
+        </select>
+      </div>
+      <div class="col-md-3">
+        <button type="submit" class="btn btn-success"><i class="fas fa-check"></i> تأكيد الدفعة</button>
+      </div>
+    </form>
+    {% endif %}
+
+    <hr>
+    <form method="post" action="{{ url_for('billing_delete', id=invoice.id) }}" class="d-inline">
+      <button class="btn btn-outline-danger btn-delete"><i class="fas fa-trash"></i> حذف الفاتورة</button>
+    </form>
+    <button onclick="window.print()" class="btn btn-outline-primary"><i class="fas fa-print"></i> طباعة</button>
+  </div>
+</div>
+{% endblock %}

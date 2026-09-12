@@ -1,0 +1,91 @@
+{% extends 'base_public.html' %}
+{% block title %}طلب حجز موعد - {{ clinic_name }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-8">
+    <div class="card shadow-sm">
+      <div class="card-header bg-white">
+        <i class="fas fa-calendar-plus text-primary"></i>
+        <strong>طلب حجز موعد</strong>
+        <span class="text-muted small">— تظهر لك الأوقات المتاحة فقط، وسيؤكد الطبيب الموعد لاحقاً</span>
+      </div>
+      <div class="card-body">
+        <form method="get" class="row g-2 align-items-end mb-4" id="dateForm">
+          <div class="col-md-5">
+            <label class="form-label">اختر التاريخ لعرض الأوقات المتاحة:</label>
+            <input type="date" name="date" class="form-control" min="{{ today.strftime('%Y-%m-%d') }}"
+                   max="{{ max_date }}" value="{{ selected_date.strftime('%Y-%m-%d') }}"
+                   onchange="document.getElementById('dateForm').submit()">
+          </div>
+          <div class="col-md-4 text-muted small pb-2">
+            {{ weekday_names[selected_date.weekday()] }} — {{ selected_date.strftime('%d/%m/%Y') }}
+          </div>
+        </form>
+
+        {% if slots %}
+        <h6 class="mb-2"><i class="fas fa-clock text-success"></i> الأوقات المتاحة يوم
+          {{ weekday_names[selected_date.weekday()] }} {{ selected_date.strftime('%d/%m/%Y') }}:</h6>
+        <form method="post">
+          <input type="hidden" name="date" value="{{ selected_date.strftime('%Y-%m-%d') }}">
+          <div class="border rounded p-3 mb-3">
+            {% for s in slots %}
+            <label class="btn btn-outline-primary slot-btn">
+              <input type="radio" name="time" value="{{ s.strftime('%H:%M') }}" required class="btn-check"
+                     onchange="document.querySelectorAll('.slot-btn').forEach(b=>b.classList.remove('active')); this.closest('label').classList.add('active')">
+              {{ s.strftime('%H:%M') }}
+            </label>
+            {% endfor %}
+          </div>
+
+          <h6 class="mb-2"><i class="fas fa-user text-primary"></i> بيانات الحجز:</h6>
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label">الاسم الكامل <span class="text-danger">*</span></label>
+              <input type="text" name="full_name" class="form-control" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">رقم الهاتف <span class="text-danger">*</span></label>
+              <input type="tel" name="phone" class="form-control" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">البريد الإلكتروني</label>
+              <input type="email" name="email" class="form-control"
+                     placeholder="لتلقي إشعار عند تأكيد الموعد أو تغييره (اختياري)">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">الجنس</label>
+              <select name="gender" class="form-select">
+                <option value="">—</option>
+                <option value="ذكر">ذكر</option>
+                <option value="أنثى">أنثى</option>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">سبب الزيارة</label>
+              <input type="text" name="reason" class="form-control" maxlength="200">
+            </div>
+            <div class="col-12">
+              <label class="form-label">ملاحظات إضافية</label>
+              <textarea name="notes" class="form-control" rows="2"></textarea>
+            </div>
+          </div>
+          <div class="mt-4">
+            <button type="submit" class="btn btn-primary btn-lg">
+              <i class="fas fa-paper-plane"></i> إرسال طلب الحجز
+            </button>
+            <span class="text-muted small me-2">سيتم منحك رقم تذكرة لمتابعة حالة الحجز</span>
+          </div>
+        </form>
+        {% else %}
+        <div class="empty-state">
+          <i class="fas fa-calendar-xmark"></i>
+          <p>لا توجد أوقات متاحة في هذا اليوم (يوم مقفل أو مكتمل الحجوزات)</p>
+          <a href="{{ url_for('portal_availability') }}" class="btn btn-outline-primary">عرض جدول الأيام المتاحة</a>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

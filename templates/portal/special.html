@@ -1,0 +1,59 @@
+{% extends 'base_public.html' %}
+{% block title %}طلب جلسة خاصة - {{ clinic_name }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-7">
+    <div class="card shadow-sm">
+      <div class="card-header bg-white">
+        <i class="fas fa-star text-warning"></i> <strong>طلب جلسة خاصة خارج أوقات العمل</strong>
+      </div>
+      <div class="card-body">
+        <div class="alert alert-info">
+          <i class="fas fa-car"></i>
+          تُعقد الجلسات الخاصة خارج ساعات العمل الرسمية، و<b>تتكفل العيادة بمصاريف النقل</b>
+          {% if transport_fee %} بمبلغ يعادل {{ transport_fee }} د.ج{% endif %}.
+          يراجع الطبيب الطلب ويحدد الموعد النهائي بعد الموافقة.
+        </div>
+
+        <form method="post">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label">الاسم الكامل <span class="text-danger">*</span></label>
+              <input type="text" name="full_name" class="form-control" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">رقم الهاتف <span class="text-danger">*</span></label>
+              <input type="tel" name="phone" class="form-control" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">البريد الإلكتروني</label>
+              <input type="email" name="email" class="form-control"
+                     placeholder="لتلقي إشعار عند قبول الطلب (اختياري)">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">التاريخ المفضل <span class="text-danger">*</span></label>
+              <input type="date" name="date" class="form-control" min="{{ today.strftime('%Y-%m-%d') }}" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">الوقت المفضل <span class="text-danger">*</span></label>
+              <input type="time" name="time" class="form-control" required>
+            </div>
+            <div class="col-12">
+              <label class="form-label">وصف الحالة / طبيب الطلب</label>
+              <textarea name="notes" class="form-control" rows="3"
+                        placeholder="اشرح باختصار طبيعة الجلسة الخاصة والوقت المناسب لك..."></textarea>
+            </div>
+          </div>
+          <div class="mt-4">
+            <button type="submit" class="btn btn-warning btn-lg text-white">
+              <i class="fas fa-paper-plane"></i> إرسال طلب الجلسة الخاصة
+            </button>
+            <span class="text-muted small me-2">سيتم منحك رقم تذكرة لمتابعة الطلب</span>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

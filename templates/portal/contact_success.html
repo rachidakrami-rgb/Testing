@@ -1,0 +1,53 @@
+{% extends 'base_public.html' %}
+{% block title %}تم إرسال رسالتك - {{ clinic_name }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-7">
+    <div class="ticket-box text-center">
+      <i class="fas fa-circle-check fa-3x text-success"></i>
+      <h3 class="mt-3">وصلت رسالتك للطبيب ✅</h3>
+      <p class="mb-1">سيرد عليك الطبيب في أقرب وقت. يمكنك مراسلتنا مجدداً بنفس رقم الهاتف
+        وستظهر لك المحادثة كاملة هنا.</p>
+    </div>
+
+    {% if conversation %}
+    <div class="card shadow-sm mt-4">
+      <div class="card-header bg-white">
+        <i class="fas fa-comments text-primary"></i>
+        <strong>محادثتك مع {{ clinic_name }}</strong>
+        <span class="text-muted small">({{ patient.first_name }} {{ patient.last_name }} — {{ patient.code }})</span>
+      </div>
+      <div class="card-body">
+        {% for m in conversation %}
+        <div class="d-flex mb-2 {{ 'justify-content-start' if m.sender == 'patient' else 'justify-content-end' }}">
+          <div class="p-2 rounded-3 {{ 'bg-light' if m.sender == 'patient' else 'bg-primary text-white' }}"
+               style="max-width:80%">
+            <div style="white-space:pre-wrap">{{ m.body }}</div>
+            <small class="{{ 'text-muted' if m.sender == 'patient' else 'text-white-50' }} d-block mt-1">
+              {{ 'أنت' if m.sender == 'patient' else 'الطبيب' }}
+              — {{ m.created_at.strftime('%Y/%m/%d %H:%M') }}
+            </small>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+    <div class="alert alert-primary mt-3 small mb-0">
+      <i class="fab fa-telegram"></i> للحصول على الردود فوراً على هاتفك:
+      اربط حسابك بتيليجرام من
+      <a href="{{ telegram_bot_link }}" target="_blank">{{ telegram_bot_link }}</a>
+      بأرسال <code>/start {{ patient.code }}</code>
+    </div>
+
+    <div class="text-center mt-4 d-flex gap-2 justify-content-center">
+      <a href="{{ url_for('portal_contact') }}" class="btn btn-outline-primary">
+        <i class="fas fa-plus"></i> رسالة جديدة
+      </a>
+      <a href="{{ url_for('portal_home') }}" class="btn btn-outline-secondary">بوابة المريض</a>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,249 @@
+{% extends 'base.html' %}
+{% block title %}لوحة التحكم - {{ clinic_name }}{% endblock %}
+{% block page_title %}لوحة التحكم{% endblock %}
+{% block breadcrumb %}نظرة عامة على العيادة{% endblock %}
+
+{% block content %}
+<!-- بطاقات الإحصائيات -->
+<div class="row g-3 mb-2">
+  <div class="col-md-3 col-sm-6">
+    <div class="stat-card">
+      <div class="icon bg-primary-soft"><i class="fas fa-users"></i></div>
+      <div class="info"><h3>{{ total_patients }}</h3><p>إجمالي المرضى</p></div>
+    </div>
+  </div>
+  <div class="col-md-3 col-sm-6">
+    <div class="stat-card">
+      <div class="icon bg-info-soft"><i class="fas fa-calendar-day"></i></div>
+      <div class="info"><h3>{{ today_appointments|length }}</h3><p>مواعيد اليوم</p></div>
+    </div>
+  </div>
+  <div class="col-md-3 col-sm-6">
+    <div class="stat-card">
+      <div class="icon bg-success-soft"><i class="fas fa-clipboard-check"></i></div>
+      <div class="info"><h3>{{ completed_visits }}</h3><p>إجمالي الزيارات</p></div>
+    </div>
+  </div>
+  <div class="col-md-3 col-sm-6">
+    <div class="stat-card">
+      <div class="icon bg-danger-soft"><i class="fas fa-hourglass-half"></i></div>
+      <div class="info"><h3>{{ pending_requests }}</h3><p>طلبات حجز بانتظار التأكيد</p></div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3 mb-2">
+  <div class="col-md-3">
+    <div class="stat-card">
+      <div class="icon bg-warning-soft"><i class="fas fa-file-invoice"></i></div>
+      <div class="info"><h3>{{ pending_invoices }}</h3><p>فواتير غير مسددة</p></div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="stat-card">
+      <div class="icon bg-success-soft"><i class="fas fa-money-bill-wave"></i></div>
+      <div class="info"><h3>{{ total_revenue|round(2) }} د.ج</h3><p>إجمالي الإيرادات المحصلة</p></div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="stat-card">
+      <div class="icon bg-danger-soft"><i class="fas fa-balance-scale"></i></div>
+      <div class="info"><h3>{{ pending_balance|round(2) }} د.ج</h3><p>المبالغ المستحقة</p></div>
+    </div>
+  </div>
+  <!-- تأكيدات حضور الغد (عبر أزرار تيليجرام) -->
+  <div class="col-md-3">
+    <div class="card h-100">
+      <div class="card-body py-2">
+        <h6 class="text-muted mb-2 small">
+          <i class="fas fa-calendar-check text-primary"></i> تأكيدات حضور الغد
+        </h6>
+        <h4 class="mb-2">{{ tomorrow_stats.total }} <small class="text-muted fs-6">موعد</small></h4>
+        <div class="d-flex justify-content-between small mb-1">
+          <span><i class="fas fa-check-circle text-success"></i> أكّدوا</span>
+          <strong class="text-success">{{ tomorrow_stats.confirmed }}</strong>
+        </div>
+        <div class="d-flex justify-content-between small mb-1">
+          <span><i class="fas fa-times-circle text-danger"></i> اعتذروا</span>
+          <strong class="text-danger">{{ tomorrow_stats.declined }}</strong>
+        </div>
+        <div class="d-flex justify-content-between small">
+          <span><i class="fas fa-clock text-warning"></i> بانتظار الرد</span>
+          <strong class="text-warning">{{ tomorrow_stats.pending }}</strong>
+        </div>
+        {% if tomorrow_stats.appointments %}
+        <button class="btn btn-sm btn-outline-primary mt-2 w-100 py-1"
+                data-bs-toggle="modal" data-bs-target="#tomorrowDetailsModal">
+          عرض التفاصيل
+        </button>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- نافذة تفاصيل مواعيد الغد -->
+{% if tomorrow_stats.appointments %}
+<div class="modal fade" id="tomorrowDetailsModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">تفاصيل مواعيد الغد</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <table class="table table-sm">
+          <thead><tr><th>المريض</th><th>الوقت</th><th>الحضور</th></tr></thead>
+          <tbody>
+            {% for a in tomorrow_stats.appointments %}
+            <tr>
+              <td>{{ a.patient.full_name }}</td>
+              <td>{{ a.time.strftime('%H:%M') }}</td>
+              <td>
+                {% if a.attendance_confirmed == true %}<span class="badge bg-success">سأحضر ✓</span>
+                {% elif a.attendance_confirmed == false %}<span class="badge bg-danger">معتذر</span>
+                {% else %}<span class="badge bg-warning text-dark">بانتظار الرد</span>{% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{# مربع "رسائل المرضى" المباشرة أُزيل من لوحة التحكم — الرسائل متاحة عبر أيقونة الشريط العلوي #}
+
+{% if pending_appointments %}
+<div class="card mb-2">
+  <div class="card-header">
+    <span><i class="fas fa-bell text-warning"></i> طلبات حجز إلكتروني بانتظار تأكيدك</span>
+    <a href="{{ url_for('appointments_list') }}" class="btn btn-sm btn-primary">إدارة المواعيد</a>
+  </div>
+  <div class="card-body" style="padding:0">
+    <table class="table">
+      <thead><tr><th>التاريخ</th><th>الوقت</th><th>المريض</th><th>الهاتف</th><th>النوع</th><th>التذكرة</th></tr></thead>
+      <tbody>
+        {% for a in pending_appointments %}
+        <tr>
+          <td>{{ a.date.strftime('%Y-%m-%d') }}</td>
+          <td><strong>{{ a.time.strftime('%H:%M') }}</strong></td>
+          <td>{{ a.patient.full_name }}</td>
+          <td>{{ a.contact_phone or a.patient.phone or '-' }}</td>
+          <td>
+            {% if a.is_special %}<span class="badge badge-special">جلسة خاصة</span>
+            {% else %}<span class="badge badge-pending">حجز إلكتروني</span>{% endif %}
+          </td>
+          <td><code>{{ a.ticket_code }}</code></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+<div class="row g-3">
+  <!-- مواعيد اليوم -->
+  <div class="col-lg-7">
+    <div class="card">
+      <div class="card-header">
+        <span><i class="fas fa-calendar-day text-primary"></i> مواعيد اليوم ({{ today.strftime('%Y-%m-%d') }})</span>
+        <a href="{{ url_for('appointments_list') }}" class="btn btn-sm btn-primary">عرض الكل</a>
+      </div>
+      <div class="card-body" style="padding:0">
+        {% if today_appointments %}
+        <table class="table">
+          <thead><tr><th>الوقت</th><th>المريض</th><th>السبب</th><th>الحالة</th></tr></thead>
+          <tbody>
+            {% for a in today_appointments %}
+            <tr>
+              <td><strong>{{ a.time.strftime('%H:%M') }}</strong></td>
+              <td><a href="{{ url_for('patient_view', id=a.patient_id) }}" class="text-decoration-none">{{ a.patient.full_name }}</a></td>
+              <td>{{ a.reason or '-' }}</td>
+              <td><span class="badge badge-{{ a.status }}">{{ statuses.get(a.status, a.status) }}</span></td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <div class="empty-state"><i class="fas fa-calendar-times"></i><p>لا توجد مواعيد اليوم</p></div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- التذكيرات -->
+  <div class="col-lg-5">
+    <div class="card">
+      <div class="card-header">
+        <span><i class="fas fa-bell text-warning"></i> تذكيرات المواعيد القادمة</span>
+        <a href="{{ url_for('reminders') }}" class="btn btn-sm btn-outline-primary">الكل</a>
+      </div>
+      <div class="card-body">
+        {% if reminders %}
+        <ul class="list-group list-group-flush">
+          {% for a in reminders %}
+          <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+            <div>
+              <strong>{{ a.patient.full_name }}</strong>
+              <small class="d-block text-muted">{{ a.date.strftime('%Y-%m-%d') }} - {{ a.time.strftime('%H:%M') }}</small>
+            </div>
+            {% if a.attendance_confirmed == true %}
+            <span class="badge bg-success">سأحضر ✓</span>
+            {% elif a.attendance_confirmed == false %}
+            <span class="badge bg-danger">معتذر</span>
+            {% elif a.reminder_sent %}
+            <span class="badge bg-success">تم الإرسال</span>
+            {% else %}
+            <span class="badge bg-warning text-dark">بانتظار الإرسال</span>
+            {% endif %}
+          </li>
+          {% endfor %}
+        </ul>
+        {% else %}
+        <div class="empty-state"><i class="fas fa-check-circle"></i><p>لا توجد تذكيرات</p></div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- رسم بياني -->
+<div class="row g-3 mt-1">
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header"><i class="fas fa-chart-line text-primary"></i> إحصائيات آخر 7 أيام</div>
+      <div class="card-body">
+        <canvas id="statsChart" height="100"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+const ctx = document.getElementById('statsChart');
+new Chart(ctx, {
+  type: 'bar',
+  data: {
+    labels: {{ days|tojson }},
+    datasets: [
+      { label: 'عدد الزيارات', data: {{ visits_counts|tojson }}, backgroundColor: '#4f46e5', borderRadius: 6 },
+      { label: 'الإيرادات (د.ج)', data: {{ revenue_counts|tojson }}, backgroundColor: '#10b981', borderRadius: 6, yAxisID: 'y1' }
+    ]
+  },
+  options: {
+    responsive: true,
+    scales: {
+      y: { beginAtZero: true, title: { display: true, text: 'الزيارات' } },
+      y1: { beginAtZero: true, position: 'left', title: { display: true, text: 'الإيرادات' }, grid: { drawOnChartArea: false } }
+    }
+  }
+});
+</script>
+{% endblock %}

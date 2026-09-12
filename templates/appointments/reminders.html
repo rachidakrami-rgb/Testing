@@ -1,0 +1,45 @@
+{% extends 'base.html' %}
+{% block title %}التذكيرات - {{ clinic_name }}{% endblock %}
+{% block page_title %}تذكير المواعيد{% endblock %}
+{% block breadcrumb %}تذكيرات تلقائية بالمواعيد القادمة{% endblock %}
+
+{% block content %}
+<div class="card">
+  <div class="card-header">
+    <span><i class="fas fa-bell text-warning"></i> مواعيد تحتاج تذكير ({{ appointments|length }})</span>
+  </div>
+  <div class="card-body" style="padding:0">
+    {% if appointments %}
+    <table class="table">
+      <thead><tr><th>المريض</th><th>الهاتف</th><th>التاريخ</th><th>الوقت</th><th>المتبقي</th><th>الحالة</th><th>إجراء</th></tr></thead>
+      <tbody>
+        {% for a in appointments %}
+        <tr>
+          <td><a href="{{ url_for('patient_view', id=a.patient_id) }}">{{ a.patient.full_name }}</a></td>
+          <td>{{ a.patient.phone or '-' }}</td>
+          <td>{{ a.date.strftime('%Y-%m-%d') }}</td>
+          <td>{{ a.time.strftime('%H:%M') }}</td>
+          <td>
+            {% set diff = (a.date - today).days %}
+            {% if diff == 0 %}<span class="badge bg-danger">اليوم</span>
+            {% elif diff == 1 %}<span class="badge bg-warning text-dark">غداً</span>
+            {% else %}<span class="badge bg-info">بعد {{ diff }} أيام</span>{% endif %}
+          </td>
+          <td>{% if a.reminder_sent %}<span class="badge bg-success">تم الإرسال</span>{% else %}<span class="badge bg-warning text-dark">بانتظار</span>{% endif %}</td>
+          <td>
+            {% if not a.reminder_sent %}
+            <form method="post" action="{{ url_for('send_reminder', id=a.id) }}" class="d-inline">
+              <button class="btn btn-sm btn-primary"><i class="fas fa-paper-plane"></i> إرسال تذكير</button>
+            </form>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state"><i class="fas fa-check-circle"></i><p>لا توجد مواعيد قادمة تحتاج تذكير</p></div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,41 @@
+{# تبويبات فرعية مشتركة بين "قائمة المرضى" و"متابعة الحالة" — متابعة الحالة أصبحت
+   تبويباً فرعياً داخل قسم إدارة المرضى بدل تبويب مستقل في الشريط العلوي. #}
+<div class="patients-subtabs mb-3">
+  <a href="{{ url_for('patients_list') }}"
+     class="patients-subtab {% if request.endpoint == 'patients_list' or request.endpoint == 'patient_new' or request.endpoint == 'patient_view' %}active{% endif %}">
+    <i class="fas fa-users"></i> قائمة المرضى
+  </a>
+  <a href="{{ url_for('imaging_list') }}"
+     class="patients-subtab {% if 'imaging' in request.endpoint %}active{% endif %}">
+    <i class="fas fa-notes-medical"></i> متابعة الحالة
+  </a>
+</div>
+
+<style>
+.patients-subtabs {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.patients-subtab {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 16px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, .6);
+  border: 1px solid var(--glass-border, rgba(148,163,184,.3));
+  color: #475569;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: .88rem;
+  transition: all .2s;
+}
+.patients-subtab:hover { background: rgba(255,255,255,.9); color: var(--primary, #4f46e5); }
+.patients-subtab.active {
+  background: var(--gradient, linear-gradient(135deg,#4f46e5,#4338ca));
+  color: #fff;
+  border-color: transparent;
+  box-shadow: 0 4px 14px rgba(79,70,229,.35);
+}
+</style>

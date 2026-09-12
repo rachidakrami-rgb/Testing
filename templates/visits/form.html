@@ -1,0 +1,70 @@
+{% extends 'base.html' %}
+{% block title %}تسجيل زيارة - {{ clinic_name }}{% endblock %}
+{% block page_title %}تسجيل زيارة جديدة{% endblock %}
+{% block breadcrumb %}<a href="{{ url_for('visits_list') }}">الزيارات</a> / جديدة{% endblock %}
+
+{% block content %}
+<div class="card">
+  <div class="card-header"><i class="fas fa-clipboard-list text-primary"></i> بيانات الزيارة</div>
+  <div class="card-body">
+    <form method="post">
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label class="form-label">المريض *</label>
+          <select name="patient_id" class="form-select" required>
+            <option value="">-- اختر المريض --</option>
+            {% for p in patients %}
+            <option value="{{ p.id }}" {% if preselect == p.id %}selected{% endif %}>{{ p.full_name }} ({{ p.code }})</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">تاريخ الزيارة</label>
+          <input type="date" name="visit_date" class="form-control" value="{{ today.strftime('%Y-%m-%d') }}">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">الرسوم (د.ج)</label>
+          <input type="number" name="fee" id="fee" class="form-control" value="0" step="0.01">
+        </div>
+        <div class="col-12">
+          <label class="form-label">الشكوى الرئيسية</label>
+          <textarea name="chief_complaint" class="form-control" rows="2" placeholder="ما الذي يشتكي منه المريض..."></textarea>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">التشخيص</label>
+          <textarea name="diagnosis" class="form-control" rows="3"></textarea>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">العلاج المقدم</label>
+          <textarea name="treatment" class="form-control" rows="3"></textarea>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">الوصفة الطبية</label>
+          <textarea name="prescription" class="form-control" rows="3"></textarea>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">ملاحظات الجلسة</label>
+          <textarea name="session_notes" class="form-control" rows="3"></textarea>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">تقييم الحالة المزاجية</label>
+          <select name="mood_assessment" class="form-select">
+            <option value="">-- اختر --</option>
+            {% for m in ['ممتاز','جيد','مستقر','متقلب','سيء','حرج'] %}
+            <option value="{{ m }}">{{ m }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">الموعد القادم المقترح</label>
+          <input type="date" name="next_appointment" class="form-control">
+        </div>
+      </div>
+      <div class="mt-4">
+        <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> حفظ الزيارة</button>
+        <a href="{{ url_for('visits_list') }}" class="btn btn-outline-secondary">إلغاء</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

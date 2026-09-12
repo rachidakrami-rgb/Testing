@@ -1,0 +1,162 @@
+{% extends 'base.html' %}
+{% block title %}المرضى - {{ clinic_name }}{% endblock %}
+{% block page_title %}إدارة المرضى{% endblock %}
+{% block breadcrumb %}قائمة بكل المرضى{% endblock %}
+
+{% block content %}
+{% include '_patients_subtabs.html' %}
+<div class="card">
+  <div class="card-header">
+    <span><i class="fas fa-users text-primary"></i> قائمة المرضى ({{ patients.total }})
+      {% if archived %}<span class="badge bg-secondary">الأرشيف</span>{% endif %}
+    </span>
+    <div>
+      {% if archived %}
+      <a href="{{ url_for('patients_list') }}" class="btn btn-outline-primary btn-sm">المرضى النشطون</a>
+      {% else %}
+      <a href="{{ url_for('patients_list', archived=1) }}" class="btn btn-outline-secondary btn-sm"><i class="fas fa-box-archive"></i> الأرشيف</a>
+      {% endif %}
+      <a href="{{ url_for('patient_new') }}" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> مريض جديد</a>
+    </div>
+  </div>
+  <div class="card-body">
+    <form method="get" class="mb-3">
+      <div class="input-group">
+        <input type="text" name="q" value="{{ search }}" class="form-control" placeholder="بحث بالاسم أو الهاتف أو الكود...">
+        <button class="btn btn-primary" type="submit"><i class="fas fa-search"></i> بحث</button>
+      </div>
+    </form>
+    {% if patients.items %}
+    <div class="table-responsive">
+      <table class="table">
+        <thead><tr><th>الكود</th><th>الاسم</th><th>الهاتف</th><th>العمر</th><th>الجنس</th><th>تاريخ التسجيل</th><th>إجراءات</th></tr></thead>
+        <tbody>
+          {% for p in patients.items %}
+          <tr>
+            <td><strong>{{ p.code }}</strong></td>
+            <td><a href="{{ url_for('patient_view', id=p.id) }}" class="text-decoration-none fw-bold">{{ p.full_name }}</a></td>
+            <td>{{ p.phone or '-' }}</td>
+            <td>{{ p.age if p.age else '-' }}</td>
+            <td>{{ p.gender or '-' }}</td>
+            <td>{{ p.created_at.strftime('%Y-%m-%d') }}</td>
+            <td>
+              <a href="{{ url_for('patient_view', id=p.id) }}" class="btn btn-sm btn-outline-primary"><i class="fas fa-eye"></i></a>
+              <a href="{{ url_for('patient_edit', id=p.id) }}" class="btn btn-sm btn-outline-secondary"><i class="fas fa-edit"></i></a>
+              {% if archived %}
+              <form method="post" action="{{ url_for('patient_restore', id=p.id) }}" class="d-inline">
+                <button class="btn btn-sm btn-outline-success" title="استرجاع"><i class="fas fa-rotate-left"></i></button>
+              </form>
+              {% else %}
+              {% if not p.telegram_chat_id %}
+              <button type="button" class="btn btn-sm btn-outline-info" title="رمز QR لربط تيليجرام"
+                      data-bs-toggle="modal" data-bs-target="#qrModal"
+                      data-name="{{ p.full_name }}" data-code="{{ p.code }}"
+                      data-qr="{{ url_for('patient_qr', id=p.id) }}"
+                      data-link="{{ telegram_bot_link }}?start={{ p.code }}">
+                <i class="fas fa-qrcode"></i>
+              </button>
+              {% endif %}
+              <form method="post" action="{{ url_for('patient_delete', id=p.id) }}" class="d-inline">
+                <button class="btn btn-sm btn-outline-danger btn-delete" title="أرشفة المريض"><i class="fas fa-box-archive"></i></button>
+              </form>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% if patients.pages > 1 %}
+    <nav class="p-3">
+      <ul class="pagination pagination-sm mb-0">
+        <li class="page-item {% if not patients.has_prev %}disabled{% endif %}">
+          <a class="page-link" href="{{ url_for('patients_list', page=patients.prev_num, q=search, archived=1 if archived else None) if patients.has_prev else '#' }}">السابق</a>
+        </li>
+        {% for p in patients.iter_pages() %}
+          {% if p %}<li class="page-item {% if p == patients.page %}active{% endif %}"><a class="page-link" href="{{ url_for('patients_list', page=p, q=search, archived=1 if archived else None) }}">{{ p }}</a></li>
+          {% else %}<li class="page-item disabled"><span class="page-link">…</span></li>{% endif %}
+        {% endfor %}
+        <li class="page-item {% if not patients.has_next %}disabled{% endif %}">
+          <a class="page-link" href="{{ url_for('patients_list', page=patients.next_num, q=search, archived=1 if archived else None) if patients.has_next else '#' }}">التالي</a>
+        </li>
+      </ul>
+    </nav>
+    {% endif %}
+    {% else %}
+    <div class="empty-state">
+      <i class="fas fa-user-slash"></i>
+      <p>{{ 'الأرشيف فارغ' if archived else 'لا يوجد مرضى مسجلون بعد' }}</p>
+      {% if not archived %}
+      <a href="{{ url_for('patient_new') }}" class="btn btn-primary mt-2"><i class="fas fa-plus"></i> إضافة أول مريض</a>
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+</div>
+<!-- نافذة رمز QR لربط المريض ببوت تيليجرام -->
+<div class="modal fade" id="qrModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="fab fa-telegram text-primary"></i> ربط المريض ببوت تيليجرام</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="إغلاق"></button>
+      </div>
+      <div class="modal-body text-center">
+        <p class="mb-2">المريض: <strong id="qrPatientName"></strong></p>
+        <img id="qrImg" src="" alt="QR" class="img-fluid border rounded p-2 bg-white mb-2" style="max-width:220px">
+        <p class="small text-muted mb-2">اطلب من المريض مسح الرمز بكاميرا هاتفه — سيفتح البوت ويرسل أمر الربط تلقائياً دون كتابة أي أمر.</p>
+        <div class="input-group input-group-sm mb-2 mx-auto" dir="ltr" style="max-width:320px">
+          <span class="input-group-text">الكود</span>
+          <input type="text" id="qrCode" class="form-control text-center fw-bold" readonly>
+          <button class="btn btn-outline-primary" type="button" id="qrCopyCode" title="نسخ"><i class="fas fa-copy"></i></button>
+        </div>
+        <div class="input-group input-group-sm mx-auto" dir="ltr" style="max-width:320px">
+          <span class="input-group-text">الرابط</span>
+          <input type="text" id="qrLink" class="form-control" readonly>
+          <button class="btn btn-outline-primary" type="button" id="qrCopyLink" title="نسخ"><i class="fas fa-copy"></i></button>
+        </div>
+      </div>
+      <div class="modal-footer justify-content-center">
+        <a id="qrDownload" href="#" class="btn btn-outline-primary btn-sm"><i class="fas fa-download"></i> حفظ الرمز PNG</a>
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">إغلاق</button>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+(function () {
+  var modal = document.getElementById('qrModal');
+  if (!modal) return;
+  function copyText(txt, btn) {
+    var done = function () {
+      var old = btn.innerHTML;
+      btn.innerHTML = '<i class="fas fa-check text-success"></i>';
+      setTimeout(function () { btn.innerHTML = old; }, 1200);
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(txt).then(done);
+    } else {
+      var t = document.createElement('textarea');
+      t.value = txt; document.body.appendChild(t); t.select();
+      try { document.execCommand('copy'); } catch (e) {}
+      document.body.removeChild(t); done();
+    }
+  }
+  modal.addEventListener('show.bs.modal', function (e) {
+    var b = e.relatedTarget;
+    if (!b) return;
+    document.getElementById('qrPatientName').textContent = b.getAttribute('data-name');
+    document.getElementById('qrImg').src = b.getAttribute('data-qr');
+    document.getElementById('qrCode').value = b.getAttribute('data-code');
+    document.getElementById('qrLink').value = b.getAttribute('data-link');
+    document.getElementById('qrDownload').href = b.getAttribute('data-qr') + '?download=1';
+  });
+  document.getElementById('qrCopyCode').addEventListener('click', function () {
+    copyText(document.getElementById('qrCode').value, this);
+  });
+  document.getElementById('qrCopyLink').addEventListener('click', function () {
+    copyText(document.getElementById('qrLink').value, this);
+  });
+})();
+</script>
+{% endblock %}

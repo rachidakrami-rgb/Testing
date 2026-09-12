@@ -1,0 +1,324 @@
+{% extends 'base.html' %}
+{% block title %}الإعدادات - {{ clinic_name }}{% endblock %}
+{% block page_title %}إعدادات العيادة{% endblock %}
+{% block breadcrumb %}بيانات العيادة، جدول المواعيد، وكلمة المرور{% endblock %}
+
+{% block content %}
+<div class="row g-3">
+  <div class="col-lg-7">
+    <div class="card">
+      <div class="card-header"><i class="fas fa-cog text-primary"></i> بيانات العيادة</div>
+      <div class="card-body">
+        <form method="post">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label">اسم العيادة</label>
+              <input type="text" name="clinic_name" class="form-control" value="{{ clinic_name }}">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">اسم الطبيب</label>
+              <input type="text" name="doctor_name" class="form-control" value="{{ doctor_name }}">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">هاتف العيادة</label>
+              <input type="text" name="clinic_phone" class="form-control" value="{{ clinic_phone }}">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">عنوان العيادة</label>
+              <input type="text" name="clinic_address" class="form-control" value="{{ clinic_address }}">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">رسوم الزيارة الافتراضية (د.ج)</label>
+              <input type="number" name="default_fee" class="form-control" step="0.01" value="{{ default_fee }}">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">مخصص مصاريف النقل للجلسة الخاصة (د.ج)</label>
+              <input type="number" name="transport_fee" class="form-control" step="0.01" value="{{ transport_fee }}">
+            </div>
+          </div>
+
+          <hr>
+          <h6><i class="fas fa-calendar-day text-primary"></i> جدول المواعيد المستقبَلة من بوابة المريض</h6>
+          <div class="row g-3">
+            <div class="col-md-3">
+              <label class="form-label">بداية العمل</label>
+              <input type="time" name="work_start" class="form-control" value="{{ work_start }}">
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">نهاية العمل</label>
+              <input type="time" name="work_end" class="form-control" value="{{ work_end }}">
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">مدة الجلسة (دقيقة)</label>
+              <input type="number" name="slot_minutes" class="form-control" value="{{ slot_minutes }}" min="15" step="15">
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">أقصى عدد حجوزات يومياً</label>
+              <input type="number" name="max_per_day" class="form-control" value="{{ max_per_day }}" min="1">
+            </div>
+            <div class="col-12">
+              <label class="form-label">أيام الراحة (لا تُستقبل حجوزات فيها)</label>
+              <div class="d-flex gap-3 flex-wrap">
+                {% for num, name in weekday_names.items() %}
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" name="closed_days" value="{{ num }}"
+                         id="closed{{ num }}" {% if num in closed_days %}checked{% endif %}>
+                  <label class="form-check-label" for="closed{{ num }}">{{ name }}</label>
+                </div>
+                {% endfor %}
+              </div>
+            </div>
+          </div>
+
+          <hr>
+          <h6><i class="fas fa-envelope-open-text text-success"></i> إشعارات البريد الإلكتروني للمريض</h6>
+          <p class="text-muted small mb-2">
+            تُرسل تلقائياً للمريض عند <b>تأكيد</b> موعده أو <b>تغييره</b> أو <b>إلغائه</b> من طرف الطبيب.
+            تعمل عبر خدمة <a href="https://www.brevo.com/pricing/" target="_blank">Brevo</a> المجانية
+            (300 بريد يومياً). سجّل حساباً مجانياً، وأضف بريدك كمُرسِل موثّق (Senders)، ثم انسخ مفتاح
+            <b>SMTP &amp; API → API Keys</b> هنا.
+          </p>
+          <div class="row g-3">
+            <div class="col-md-4">
+              <div class="form-check form-switch mt-2">
+                <input class="form-check-input" type="checkbox" role="switch"
+                       name="notify_email_enabled" id="notifySwitch" {% if notify_email_enabled %}checked{% endif %}>
+                <label class="form-check-label" for="notifySwitch">تفعيل الإشعارات</label>
+              </div>
+            </div>
+            <div class="col-md-8">
+              <label class="form-label">مفتاح Brevo API</label>
+              <input type="password" name="brevo_api_key" class="form-control"
+                     value="{{ brevo_api_key }}" placeholder="xkeysib-..." autocomplete="new-password">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">بريد المرسل (موثق في Brevo)</label>
+              <input type="email" name="brevo_sender_email" class="form-control" value="{{ brevo_sender_email }}">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">اسم المرسل</label>
+              <input type="text" name="brevo_sender_name" class="form-control" value="{{ brevo_sender_name }}">
+            </div>
+          </div>
+
+          <hr>
+          <h6><i class="fab fa-telegram text-primary"></i> إشعارات تيليجرام للمريض (قناة اختيارية)</h6>
+          <p class="text-muted small mb-2">
+            تُرسل تلقائياً <b>بنفس لحظة إشعارات البريد</b> (تأكيد / تغيير / إلغاء الموعد) للمرضى
+            الذين يفضلون تيليجرام. لتفعيلها: يفتح المريض
+            <a href="{{ telegram_bot_link }}" target="_blank">{{ telegram_bot_link }}</a>
+            ويرسل <code>/start كود_المريض</code> فيُربط حسابه تلقائياً عبر
+            <code>/telegram/webhook</code>. بعد نشر التطبيق على رابط عام اضغط
+            «ضبط Webhook» أدناه.
+          </p>
+          <div class="row g-3">
+            <div class="col-md-4">
+              <div class="form-check form-switch mt-2">
+                <input class="form-check-input" type="checkbox" role="switch"
+                       name="notify_telegram_enabled" id="telegramSwitch" {% if notify_telegram_enabled %}checked{% endif %}>
+                <label class="form-check-label" for="telegramSwitch">تفعيل إشعارات تيليجرام</label>
+              </div>
+            </div>
+            <div class="col-md-8">
+              <label class="form-label">توكن البوت (Bot Token)</label>
+              <input type="password" name="telegram_bot_token" class="form-control"
+                     value="{{ telegram_bot_token }}" autocomplete="new-password"
+                     placeholder="{{ 'افتراضي: بوت CLINIC_LARBI_bot' if telegram_token_is_default else '' }}">
+              {% if telegram_token_is_default %}<div class="form-text">يُستخدم التوكن الافتراضي لبوت العيادة عند ترك الحقل فارغاً.</div>{% endif %}
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">اسم مستخدم البوت (بدون @)</label>
+              <input type="text" name="telegram_bot_username" class="form-control" value="{{ telegram_bot_username }}">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">ساعة إرسال تذكير الغد (تأكيد الحضور)</label>
+              <select name="telegram_reminder_hour" class="form-select">
+                {% for h in range(0, 24) %}
+                <option value="{{ h }}" {% if telegram_reminder_hour|int == h %}selected{% endif %}>
+                  {{ '%02d'|format(h) }}:00
+                </option>
+                {% endfor %}
+              </select>
+              <div class="form-text">يُرسل للمريض تذكير بموعد الغد مع زري «سأحضر / لن أحضر»، ويردّه الطبيب في لوحة التحكم.</div>
+            </div>
+          </div>
+
+          <div class="mt-4">
+            <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> حفظ الإعدادات</button>
+          </div>
+        </form>
+
+        <hr>
+        <h6><i class="fas fa-user-doctor text-success"></i> إشعارات الطبيب عبر تيليجرام (تقارير وتنبيهات)</h6>
+        <p class="text-muted small mb-2">
+          تُرسل لك مباشرةً على حسابك في تيليجرام: رسائل المرضى الجديدة، طلبات الحجز الإلكتروني،
+          طلبات الجلسات الخاصة، وتقرير صباحي يومي بمواعيد اليوم.
+          <b>لاستقبالها يجب أن يبدأ الطبيب محادثة مع البوت أولاً</b> ثم ضبط chat_id أدناه.
+        </p>
+
+        <form method="post" action="{{ url_for('save_doctor_chat') }}" class="row g-2 align-items-end mb-2">
+          <div class="col-md-6">
+            <label class="form-label">chat_id الطبيب على تيليجرام</label>
+            <input type="text" name="doctor_telegram_chat_id" class="form-control"
+                   value="{{ doctor_telegram_chat_id }}"
+                   placeholder="مثال: 1945423597"
+                   pattern="[0-9\-]*" inputmode="numeric">
+            <div class="form-text">
+              رقم تعريف محادثتك مع البوت. اضبطه يدوياً أو استخدم زر «كشف تلقائي» أدناه.
+              {% if doctor_telegram_chat_id %}
+              <span class="badge bg-success-subtle text-success-emphasis">مضبوط ✅</span>
+              {% else %}
+              <span class="badge bg-warning-subtle text-warning-emphasis">غير مضبوط</span>
+              {% endif %}
+            </div>
+          </div>
+          <div class="col-md-3">
+            <div class="form-check form-switch">
+              <input class="form-check-input" type="checkbox" role="switch"
+                     name="doctor_report_enabled" id="doctorReportSwitch"
+                     {% if doctor_report_enabled %}checked{% endif %}>
+              <label class="form-check-label" for="doctorReportSwitch">تقرير صباحي يومي</label>
+            </div>
+            <div class="form-text">يُرسل بين 7 و 10 صباحاً</div>
+          </div>
+          <div class="col-md-3">
+            <button type="submit" class="btn btn-primary w-100"><i class="fas fa-save"></i> حفظ</button>
+          </div>
+        </form>
+
+        <div class="d-flex gap-2 flex-wrap mt-2">
+          <form method="post" action="{{ url_for('detect_doctor_chat') }}">
+            <button type="submit" class="btn btn-outline-success">
+              <i class="fas fa-magnifying-glass"></i> كشف chat_id تلقائياً
+            </button>
+          </form>
+          <form method="post" action="{{ url_for('test_doctor_notification') }}">
+            <button type="submit" class="btn btn-outline-info"
+                    {% if not doctor_telegram_chat_id %}disabled{% endif %}>
+              <i class="fas fa-bell"></i> اختبار الإشعار
+            </button>
+          </form>
+          <a href="https://t.me/userinfobot" target="_blank" class="btn btn-outline-secondary">
+            <i class="fas fa-external-link-alt"></i> أو احصل عليه عبر @userinfobot
+          </a>
+        </div>
+        <div class="alert alert-info small mt-2 mb-0">
+          <i class="fas fa-info-circle"></i>
+          <b>طريقة الكشف التلقائي:</b>
+          <ol class="mb-0">
+            <li>افتح بوت العيادة <a href="{{ telegram_bot_link }}" target="_blank">{{ telegram_bot_link }}</a> في تيليجرام واضغط <b>Start</b> أو أرسل أي رسالة.</li>
+            <li>ارجع هنا واضغط «كشف chat_id تلقائياً» — سيُضبط تلقائياً ونُرسل لك رسالة تأكيد.</li>
+          </ol>
+          <span class="text-muted">ملاحظة: إذا كان Webhook مفعّلاً، عطّله مؤقتاً ثم أعد المحاولة.</span>
+        </div>
+
+        <hr>
+        <h6><i class="fas fa-vial text-info"></i> اختبار إعدادات البريد</h6>
+        <form method="post" action="{{ url_for('test_email') }}" class="d-flex gap-2">
+          <input type="email" name="test_email" class="form-control" placeholder="بريدك لاستقبال رسالة تجريبية" required>
+          <button type="submit" class="btn btn-outline-info px-3">إرسال اختبار</button>
+        </form>
+
+        <h6 class="mt-4"><i class="fab fa-telegram text-primary"></i> اختبار بوت تيليجرام</h6>
+        <form method="post" action="{{ url_for('test_telegram') }}" class="d-flex gap-2">
+          <input type="text" name="test_chat" class="form-control" placeholder="chat_id رقمي أو كود مريض (P01001) أو رقم تذكرة (TK-XXXXXX)" required>
+          <button type="submit" class="btn btn-outline-primary px-3">إرسال اختبار</button>
+        </form>
+          <div class="form-text w-100">الحقل يفهم تلقائيا: التذكرة تترجم لمريضها، وكود المريض يستخدم الربط المحفوظ</div>
+        </form>
+
+        <div class="mt-3 p-3 border rounded" style="background:#f6f8ff">
+          <h6 class="mb-2"><i class="fas fa-stethoscope text-primary"></i> تشخيص البوت</h6>
+          <ul class="list-unstyled mb-0 small">
+            <li class="mb-1"><i class="fas fa-robot text-muted"></i>
+              البوت: <strong dir="ltr">@{{ tg_diag.bot_username }}</strong>
+              {% if tg_diag.token_is_default %}<span class="badge bg-secondary">توكن افتراضي</span>
+              {% else %}<span class="badge bg-success">توكن مخصص</span>{% endif %}
+            </li>
+            <li class="mb-1"><i class="fas fa-link text-muted"></i>
+              الويبهوك:
+              {% if tg_diag.webhook_ok %}
+                {% if tg_diag.webhook_url %}
+                  <span class="text-success">مضبوط</span>
+                  <small class="text-muted" dir="ltr">{{ tg_diag.webhook_url[:60] }}</small>
+                  {% if tg_diag.webhook_pending %}
+                    <small>({{ tg_diag.webhook_pending }} تحديث معلق)</small>
+                  {% endif %}
+                {% else %}
+                  <span class="text-warning">غير مضبوط — يعمل بوضع getUpdates المحلي</span>
+                {% endif %}
+                {% if tg_diag.webhook_error %}
+                  <div class="text-danger">آخر خطأ ويبهوك: {{ tg_diag.webhook_error }}</div>
+                {% endif %}
+              {% else %}
+                <span class="text-danger">تعذر فحص الويبهوك:</span> {{ tg_diag.webhook_error }}
+              {% endif %}
+            </li>
+            <li class="mb-1"><i class="fas fa-user-check text-muted"></i>
+              المرضى المربوطون بالبوت: <strong>{{ tg_diag.linked_count }}</strong>
+              {% if not tg_diag.linked_count %}
+                <span class="text-muted">— استخدم زر <i class="fas fa-qrcode"></i> في صفحة المرضى لعرض رمز QR يرسل أمر الربط تلقائياً</span>
+              {% endif %}
+            </li>
+            <li><i class="fas fa-triangle-exclamation text-muted"></i>
+              آخر أخطاء الإرسال:
+              {% if tg_diag.recent_errors %}
+                <ul class="mb-0 mt-1">
+                {% for e in tg_diag.recent_errors %}
+                  <li class="text-danger">{{ e.created_at.strftime('%m-%d %H:%M') }}
+                    — {{ e.recipient or '?' }}: {{ (e.error or '')[:90] }}</li>
+                {% endfor %}
+                </ul>
+              {% else %}
+                <span class="text-success">لا أخطاء حديثة</span>
+              {% endif %}
+            </li>
+          </ul>
+        </div>
+        <form method="get" action="{{ url_for('telegram_set_webhook') }}" class="mt-2">
+          <button type="submit" class="btn btn-outline-secondary btn-sm">
+            <i class="fas fa-link"></i> ضبط Webhook على الرابط الحالي
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-5">
+    <div class="card">
+      <div class="card-header"><i class="fas fa-key text-danger"></i> تغيير كلمة مرور الطبيب</div>
+      <div class="card-body">
+        <form method="post" action="{{ url_for('change_password') }}">
+          <div class="mb-3">
+            <label class="form-label">اسم المستخدم</label>
+            <input type="text" class="form-control" value="{{ user.username if user else 'doctor' }}" disabled>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">كلمة المرور الحالية</label>
+            <input type="password" name="current_password" class="form-control" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">كلمة المرور الجديدة (6 أحرف على الأقل)</label>
+            <input type="password" name="new_password" class="form-control" minlength="6" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">تأكيد كلمة المرور الجديدة</label>
+            <input type="password" name="confirm_password" class="form-control" minlength="6" required>
+          </div>
+          <button type="submit" class="btn btn-outline-danger w-100"><i class="fas fa-rotate"></i> تغيير كلمة المرور</button>
+        </form>
+      </div>
+    </div>
+
+    <div class="card mt-3">
+      <div class="card-header"><i class="fas fa-circle-info text-info"></i> روابط سريعة</div>
+      <div class="card-body d-flex gap-2 flex-wrap">
+        <a href="{{ url_for('audit_log_page') }}" class="btn btn-outline-secondary btn-sm"><i class="fas fa-clipboard-list"></i> سجل العمليات</a>
+        <a href="{{ url_for('notifications_page') }}" class="btn btn-outline-secondary btn-sm"><i class="fas fa-envelope-open-text"></i> سجل الإشعارات</a>
+        <a href="{{ url_for('portal_home') }}" target="_blank" class="btn btn-outline-secondary btn-sm"><i class="fas fa-user"></i> بوابة المريض</a>
+        <a href="{{ url_for('reminders') }}" class="btn btn-outline-secondary btn-sm"><i class="fas fa-bell"></i> التذكيرات</a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

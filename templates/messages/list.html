@@ -1,0 +1,43 @@
+{% extends 'base.html' %}
+{% block title %}رسائل المرضى - {{ clinic_name }}{% endblock %}
+{% block page_title %}رسائل المرضى{% endblock %}
+{% block breadcrumb %}التواصل المباشر مع المرضى{% endblock %}
+
+{% block content %}
+<div class="card shadow-sm">
+  <div class="card-header bg-white">
+    <i class="fas fa-comments text-primary"></i> <strong>المحادثات</strong>
+    <span class="badge bg-secondary ms-2">{{ threads|length }}</span>
+  </div>
+  <div class="card-body p-0">
+    {% if threads %}
+    <div class="list-group list-group-flush">
+      {% for t in threads %}
+      <a href="{{ url_for('message_thread', patient_id=t.patient.id) }}"
+         class="list-group-item list-group-item-action d-flex justify-content-between align-items-center flex-wrap">
+        <div>
+          <i class="fas fa-user-circle text-primary me-1"></i>
+          <strong>{{ t.patient.full_name }}</strong>
+          <small class="text-muted d-block">
+            {{ t.patient.code }} — 📞 {{ t.patient.phone or 'بدون هاتف' }}
+            {% if t.patient.telegram_chat_id %} — <span class="badge bg-info text-dark">تيليجرام</span>{% endif %}
+          </small>
+        </div>
+        <div class="text-end">
+          {% if t.unread %}<span class="badge bg-danger mb-1">{{ t.unread }} جديدة</span>{% endif %}
+          <small class="text-muted d-block">
+            {{ t.total }} رسالة — آخرها {{ t.last.strftime('%Y/%m/%d %H:%M') if t.last }}
+          </small>
+        </div>
+      </a>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state">
+      <i class="fas fa-inbox"></i>
+      <p>لا توجد رسائل بعد — يستطيع المرضى مراسلتك من البوابة أو من تيليجرام</p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

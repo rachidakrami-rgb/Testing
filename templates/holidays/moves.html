@@ -1,0 +1,95 @@
+{% extends 'base.html' %}
+{% block title %}سجل نقل المواعيد - {{ clinic_name }}{% endblock %}
+{% block page_title %}سجل نقل المواعيد{% endblock %}
+{% block breadcrumb %}<a href="{{ url_for('holidays_list') }}">العطلات</a> / عطلة {{ holiday.start_date.strftime('%d/%m/%Y') }}{% endblock %}
+
+{% block content %}
+<div class="card shadow-sm mb-3">
+  <div class="card-body">
+    <div class="d-flex justify-content-between flex-wrap gap-2">
+      <div>
+        <i class="fas fa-calendar-xmark text-primary"></i>
+        <strong>عطلة من {{ holiday.start_date.strftime('%d/%m/%Y') }} إلى {{ holiday.end_date.strftime('%d/%m/%Y') }}</strong><br>
+        <small class="text-muted">
+          استئناف العمل: <strong class="text-success">{{ holiday.resume_date.strftime('%d/%m/%Y') }}</strong>
+          {% if holiday.reason %} — السبب: {{ holiday.reason }}{% endif %}
+        </small>
+      </div>
+      <div>
+        <span class="badge bg-secondary">{{ moves|length }} موعد منقول</span>
+        {% if holiday.status == 'active' %}
+          <span class="badge bg-primary">نشطة</span>
+        {% else %}
+          <span class="badge bg-light text-muted">سابقة</span>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card shadow-sm">
+  <div class="card-header bg-white">
+    <i class="fas fa-list text-primary"></i> <strong>المواعيد المنقولة</strong>
+  </div>
+  <div class="card-body p-0">
+    {% if moves %}
+    <div class="table-responsive">
+      <table class="table mb-0">
+        <thead><tr><th>المريض</th><th>من</th><th>→</th><th>إلى</th><th>الحالة</th><th>التذكرة</th></tr></thead>
+        <tbody>
+          {% for m in moves %}
+          <tr {% if m.conflict_resolved %}class="table-warning"{% endif %}>
+            <td>
+              {% if m.appointment and m.appointment.patient %}
+                <a href="{{ url_for('patient_view', id=m.appointment.patient_id) }}">
+                  {{ m.appointment.patient.full_name }}
+                </a>
+              {% elif m.appointment %}
+                {{ m.appointment.contact_name or '—' }}
+              {% else %}
+                <span class="text-muted">موعد محذوف</span>
+              {% endif %}
+            </td>
+            <td>
+              {{ m.old_date.strftime('%d/%m/%Y') }}<br>
+              <small class="text-muted">{{ m.old_time.strftime('%H:%M') }}</small>
+            </td>
+            <td><i class="fas fa-arrow-left text-muted"></i></td>
+            <td>
+              <strong>{{ m.new_date.strftime('%d/%m/%Y') }}</strong><br>
+              <small class="text-muted">{{ m.new_time.strftime('%H:%M') }}</small>
+            </td>
+            <td>
+              {% if m.conflict_resolved %}
+                <span class="badge bg-warning-subtle text-warning-emphasis" title="نُقل لسبب تعارض">
+                  ⚠ نقل لتعارض
+                </span>
+              {% else %}
+                <span class="badge bg-success-subtle text-success-emphasis">نقل عادي</span>
+              {% endif %}
+              {% if m.appointment %}
+                <br><small>{{ m.appointment.status }}</small>
+              {% endif %}
+            </td>
+            <td>
+              {% if m.appointment and m.appointment.ticket_code %}
+                <code>{{ m.appointment.ticket_code }}</code>
+              {% else %}—{% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="empty-state"><i class="fas fa-inbox"></i><p>لا توجد مواعيد منقولة لهذه العطلة</p></div>
+    {% endif %}
+  </div>
+</div>
+
+<div class="mt-3">
+  <a href="{{ url_for('holidays_list') }}" class="btn btn-outline-secondary">
+    <i class="fas fa-arrow-right"></i> رجوع للعطلات
+  </a>
+</div>
+{% endblock %}

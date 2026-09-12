@@ -1,0 +1,59 @@
+{% extends 'base.html' %}
+{% block title %}سجل الإشعارات - {{ clinic_name }}{% endblock %}
+{% block page_title %}سجل الإشعارات{% endblock %}
+{% block breadcrumb %}الإشعارات المرسلة للمريض عند تغيير المواعيد{% endblock %}
+
+{% block content %}
+<div class="card">
+  <div class="card-header">
+    <span><i class="fas fa-envelope-open-text text-success"></i> آخر الإشعارات ({{ logs.total }})</span>
+    <a href="{{ url_for('settings') }}" class="btn btn-sm btn-outline-primary"><i class="fas fa-cog"></i> إعدادات البريد</a>
+  </div>
+  <div class="card-body" style="padding:0">
+    {% if logs.items %}
+    <div class="table-responsive">
+      <table class="table">
+        <thead><tr><th>التاريخ</th><th>المرسل إليه</th><th>الموضوع</th><th>الحالة</th><th>تفاصيل الخطأ</th></tr></thead>
+        <tbody>
+          {% for log in logs.items %}
+          <tr>
+            <td>{{ log.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+            <td>{{ log.recipient or '-' }}</td>
+            <td>{{ log.subject }}
+              {% if log.channel == 'telegram' %}<span class="badge bg-info text-dark"><i class="fab fa-telegram"></i> تيليجرام</span>
+              {% else %}<span class="badge bg-light text-dark">بريد</span>{% endif %}
+            </td>
+            <td>
+              {% if log.status == 'sent' %}<span class="badge bg-success">أُرسل</span>
+              {% elif log.status == 'failed' %}<span class="badge bg-danger">فشل</span>
+              {% elif log.status == 'skipped' %}<span class="badge bg-secondary">تجاوز</span>
+              {% else %}<span class="badge bg-warning text-dark">قائمة الإرسال</span>{% endif %}
+            </td>
+            <td class="text-muted small">{{ log.error or '-' }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% if logs.pages > 1 %}
+    <nav class="p-3">
+      <ul class="pagination pagination-sm mb-0">
+        <li class="page-item {% if not logs.has_prev %}disabled{% endif %}">
+          <a class="page-link" href="{{ url_for('notifications_page', page=logs.prev_num) if logs.has_prev else '#' }}">السابق</a>
+        </li>
+        {% for p in logs.iter_pages() %}
+          {% if p %}<li class="page-item {% if p == logs.page %}active{% endif %}"><a class="page-link" href="{{ url_for('notifications_page', page=p) }}">{{ p }}</a></li>
+          {% else %}<li class="page-item disabled"><span class="page-link">…</span></li>{% endif %}
+        {% endfor %}
+        <li class="page-item {% if not logs.has_next %}disabled{% endif %}">
+          <a class="page-link" href="{{ url_for('notifications_page', page=logs.next_num) if logs.has_next else '#' }}">التالي</a>
+        </li>
+      </ul>
+    </nav>
+    {% endif %}
+    {% else %}
+    <div class="empty-state"><i class="fas fa-envelope"></i><p>لا توجد إشعارات بعد — فعّل الخدمة من الإعدادات</p></div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

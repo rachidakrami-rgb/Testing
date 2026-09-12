@@ -1,0 +1,120 @@
+{% extends 'base.html' %}
+{% block title %}العطلات - {{ clinic_name }}{% endblock %}
+{% block page_title %}العطلات وإعادة الجدولة{% endblock %}
+{% block breadcrumb %}إدارة عطلات العيادة{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+  <div>
+    <a href="{{ url_for('holiday_new') }}" class="btn btn-primary">
+      <i class="fas fa-plus"></i> ضبط عطلة جديدة
+    </a>
+  </div>
+</div>
+
+{# العطلات النشطة #}
+<div class="card mb-4">
+  <div class="card-header bg-primary text-white">
+    <i class="fas fa-calendar-xmark"></i> <strong>العطلات النشطة والمقبلة</strong>
+    <span class="badge bg-light text-dark ms-2">{{ active|length }}</span>
+  </div>
+  <div class="card-body p-0">
+    {% if active %}
+    <div class="table-responsive">
+      <table class="table mb-0">
+        <thead><tr><th>العطلة</th><th>استئناف العمل</th><th>السبب</th><th>المواعيد المنقولة</th><th>التذكير</th><th>إجراءات</th></tr></thead>
+        <tbody>
+          {% for h in active %}
+          <tr {% if h.start_date <= today and h.end_date >= today %}class="table-info"{% endif %}>
+            <td>
+              <strong>{{ h.start_date.strftime('%d/%m/%Y') }}</strong> →
+              <strong>{{ h.end_date.strftime('%d/%m/%Y') }}</strong>
+              {% if h.start_date <= today and h.end_date >= today %}
+                <span class="badge bg-info text-dark">جارية الآن</span>
+              {% elif h.start_date > today %}
+                <span class="badge bg-warning-subtle text-warning-emphasis">مقبلة</span>
+              {% endif %}
+              <br><small class="text-muted">أُنشئت: {{ h.created_at.strftime('%Y/%m/%d') }}</small>
+            </td>
+            <td><strong class="text-success">{{ h.resume_date.strftime('%d/%m/%Y') }}</strong></td>
+            <td>{{ h.reason or '—' }}</td>
+            <td>
+              <a href="{{ url_for('holiday_moves', holiday_id=h.id) }}" class="badge bg-secondary text-decoration-none">
+                {{ h.moved_count }} موعد
+              </a>
+            </td>
+            <td>
+              {% if h.notification_sent %}
+                <span class="badge bg-success-subtle text-success-emphasis">أُرسل</span>
+              {% else %}
+                <span class="badge bg-light text-muted">معلّق</span>
+              {% endif %}
+            </td>
+            <td>
+              <a href="{{ url_for('holiday_moves', holiday_id=h.id) }}" class="btn btn-sm btn-outline-secondary" title="سجل النقل">
+                <i class="fas fa-list"></i>
+              </a>
+              <form method="post" action="{{ url_for('holiday_delete', holiday_id=h.id) }}" class="d-inline" onsubmit="return confirm('حذف هذه العطلة؟ سيُحذف سجل النقل فقط (المواعيد المنقولة تبقى كما هي).')">
+                <button class="btn btn-sm btn-outline-danger btn-delete" title="حذف"><i class="fas fa-trash"></i></button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="empty-state"><i class="fas fa-calendar-check"></i><p>لا توجد عطلات نشطة أو مقبلة</p></div>
+    {% endif %}
+  </div>
+</div>
+
+{# سجل العطلات السابقة #}
+<div class="card">
+  <div class="card-header bg-light">
+    <i class="fas fa-clock-rotate-left text-muted"></i> <strong>سجل العطلات السابقة</strong>
+    <span class="badge bg-secondary ms-2">{{ past|length }}</span>
+  </div>
+  <div class="card-body p-0">
+    {% if past %}
+    <div class="table-responsive">
+      <table class="table table-sm mb-0">
+        <thead><tr><th>العطلة</th><th>استؤنف العمل</th><th>السبب</th><th>المواعيد المنقولة</th><th>إجراءات</th></tr></thead>
+        <tbody>
+          {% for h in past %}
+          <tr class="text-muted">
+            <td>{{ h.start_date.strftime('%d/%m/%Y') }} → {{ h.end_date.strftime('%d/%m/%Y') }}</td>
+            <td>{{ h.resume_date.strftime('%d/%m/%Y') }}</td>
+            <td>{{ h.reason or '—' }}</td>
+            <td>{{ h.moved_count }}</td>
+            <td>
+              <a href="{{ url_for('holiday_moves', holiday_id=h.id) }}" class="btn btn-sm btn-outline-secondary" title="سجل النقل">
+                <i class="fas fa-list"></i>
+              </a>
+              <form method="post" action="{{ url_for('holiday_delete', holiday_id=h.id) }}" class="d-inline">
+                <button class="btn btn-sm btn-outline-danger btn-delete" title="حذف"><i class="fas fa-trash"></i></button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="empty-state"><i class="fas fa-clock-rotate-left"></i><p>لا توجد عطلات سابقة في السجل</p></div>
+    {% endif %}
+  </div>
+</div>
+
+<div class="alert alert-info mt-3">
+  <i class="fas fa-info-circle"></i>
+  <b>كيف يعمل النقل التلقائي؟</b>
+  <ul class="mb-0 mt-1">
+    <li>عند ضبط عطلة، تُنقل كل المواعيد (المؤكدة + المعلقة) في نطاقها تلقائياً.</li>
+    <li>كل يوم عطلة يقابله يوم عمل بعد الاستئناف، بنفس التوقيت وترتيب الحجز.</li>
+    <li>تُتخطى أيام الإجازة الأسبوعية تلقائياً.</li>
+    <li>عند تعارض وقت، يُنقل الموعد لما بعد سلسلة الاستئناف مع رسالة اعتذار للمريض.</li>
+    <li>يُرسل تذكير لكل المرضى المنقولين قبل يوم من استئناف العمل.</li>
+  </ul>
+</div>
+{% endblock %}

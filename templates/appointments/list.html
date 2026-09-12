@@ -1,0 +1,127 @@
+{% extends 'base.html' %}
+{% block title %}المواعيد الأسبوعية - {{ clinic_name }}{% endblock %}
+{% block page_title %}المواعيد الأسبوعية{% endblock %}
+{% block breadcrumb %}من {{ week_start.strftime('%d/%m/%Y') }} إلى {{ week_end.strftime('%d/%m/%Y') }}{% endblock %}
+
+{% block content %}
+<div class="card">
+  <div class="card-header">
+    <span><i class="fas fa-calendar-week text-primary"></i> مواعيد 7 أيام من {{ week_start.strftime('%d/%m/%Y') }} إلى {{ week_end.strftime('%d/%m/%Y') }}</span>
+    <a href="{{ url_for('appointment_new') }}" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> موعد جديد</a>
+  </div>
+  <div class="card-body">
+    {# شريط التنقل بين الأسابيع #}
+    <form method="get" class="mb-3 d-flex gap-2 align-items-center flex-wrap">
+      <label class="form-label mb-0">بداية الأسبوع:</label>
+      <input type="date" name="date" class="form-control" style="max-width:200px" value="{{ week_start.strftime('%Y-%m-%d') }}" min="{{ today.strftime('%Y-%m-%d') }}" onchange="this.form.submit()">
+      <a href="{{ url_for('appointments_list', date=today.strftime('%Y-%m-%d')) }}" class="btn btn-outline-secondary btn-sm">الأسبوع الحالي</a>
+      {% if prev_week >= today %}
+      <a href="{{ url_for('appointments_list', date=prev_week.strftime('%Y-%m-%d')) }}" class="btn btn-outline-primary btn-sm"><i class="fas fa-chevron-right"></i> الأسبوع السابق</a>
+      {% else %}
+      <button class="btn btn-outline-secondary btn-sm" disabled title="لا يمكن عرض مواعيد ماضية"><i class="fas fa-chevron-right"></i> السابق</button>
+      {% endif %}
+      <a href="{{ url_for('appointments_list', date=next_week.strftime('%Y-%m-%d')) }}" class="btn btn-outline-primary btn-sm">الأسبوع التالي <i class="fas fa-chevron-left"></i></a>
+      <span class="badge bg-secondary ms-auto">
+        إجمالي الأسبوع: {{ appointments|length }} موعد
+      </span>
+    </form>
+
+    {% if appointments %}
+    {# عرض 7 أيام — كل يوم في قسمه الخاص #}
+    {% for day in days %}
+    <div class="appointment-day-block {% if not loop.last %}mb-3{% endif %}">
+      <div class="appointment-day-header d-flex justify-content-between align-items-center flex-wrap gap-2 {% if day.is_today %}appointment-day-today{% endif %}">
+        <div>
+          {% if day.is_today %}<span class="badge bg-primary ms-1">اليوم</span>{% endif %}
+          <strong>{{ day.weekday }}</strong>
+          <span class="text-muted">{{ day.date.strftime('%d/%m/%Y') }}</span>
+        </div>
+        <span class="badge {% if day.count > 0 %}bg-info text-dark{% else %}bg-light text-muted{% endif %}">
+          {{ day.count }} موعد
+        </span>
+      </div>
+
+      {% if day.appointments %}
+      <div class="table-responsive">
+        <table class="table table-sm mb-0">
+          <thead><tr><th>الوقت</th><th>المدة</th><th>المريض</th><th>السبب</th><th>النوع</th><th>الحالة</th><th>إجراءات</th></tr></thead>
+          <tbody>
+            {% for a in day.appointments %}
+            <tr {% if a.status == 'pending' %}class="table-warning"{% endif %}>
+              <td><strong>{{ a.time.strftime('%H:%M') }}</strong>
+                {% if a.ticket_code %}<br><code style="font-size:.7rem">{{ a.ticket_code }}</code>{% endif %}
+              </td>
+              <td>{{ a.duration }} دقيقة</td>
+              <td><a href="{{ url_for('patient_view', id=a.patient_id) }}">{{ a.patient.full_name }}</a>
+                {% if a.contact_phone %}<br><small class="text-muted"><i class="fas fa-phone"></i> {{ a.contact_phone }}</small>{% endif %}
+              </td>
+              <td>{{ a.reason or '-' }}</td>
+              <td>
+                {% if a.is_special %}<span class="badge badge-special">جلسة خاصة</span>
+                {% elif a.source == 'patient' %}<span class="badge bg-info-subtle text-info-emphasis">إلكتروني</span>
+                {% else %}<span class="text-muted">-</span>{% endif %}
+              </td>
+              <td>
+                <form method="post" action="{{ url_for('appointment_status', id=a.id) }}" class="d-flex gap-1">
+                  <select name="status" class="form-select form-select-sm" onchange="this.form.submit()" style="max-width:140px">
+                    {% for s, label in statuses.items() %}
+                    <option value="{{ s }}" {% if a.status == s %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                  </select>
+                </form>
+              </td>
+              <td>
+                {% if a.status == 'pending' %}
+                <form method="post" action="{{ url_for('appointment_status', id=a.id) }}" class="d-inline">
+                  <input type="hidden" name="status" value="scheduled">
+                  <button class="btn btn-sm btn-success" title="تأكيد الطلب"><i class="fas fa-check"></i></button>
+                </form>
+                {% endif %}
+                {% if a.status == 'scheduled' %}
+                <a href="{{ url_for('visit_new', patient_id=a.patient_id) }}" class="btn btn-sm btn-outline-success" title="تسجيل زيارة"><i class="fas fa-clipboard-list"></i></a>
+                {% endif %}
+                <a href="{{ url_for('appointment_edit', id=a.id) }}" class="btn btn-sm btn-outline-secondary" title="تعديل الوقت"><i class="fas fa-pen"></i></a>
+                <form method="post" action="{{ url_for('appointment_delete', id=a.id) }}" class="d-inline">
+                  <button class="btn btn-sm btn-outline-danger btn-delete"><i class="fas fa-trash"></i></button>
+                </form>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="appointment-day-empty text-muted small py-2">
+        <i class="fas fa-calendar-times"></i> لا توجد مواعيد في هذا اليوم
+      </div>
+      {% endif %}
+    </div>
+    {% endfor %}
+    {% else %}
+    <div class="empty-state"><i class="fas fa-calendar-times"></i><p>لا توجد مواعيد في هذه الأيام السبعة</p></div>
+    {% endif %}
+  </div>
+</div>
+
+<style>
+.appointment-day-block {
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  overflow: hidden;
+}
+.appointment-day-header {
+  padding: 10px 14px;
+  background: #f8f9fa;
+  border-bottom: 1px solid #e9ecef;
+  font-size: 0.95rem;
+}
+.appointment-day-today {
+  background: linear-gradient(135deg, #d1fae5, #a7f3d0);
+  border-bottom-color: #6ee7b7;
+}
+.appointment-day-today strong { color: #065f46; }
+.appointment-day-empty { padding-inline-start: 14px; }
+.appointment-day-block .table { margin-bottom: 0; }
+.appointment-day-block .table thead th { border-bottom-width: 1px; font-size: 0.8rem; }
+</style>
+{% endblock %}

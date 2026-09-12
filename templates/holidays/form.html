@@ -1,0 +1,87 @@
+{% extends 'base.html' %}
+{% block title %}ضبط عطلة جديدة - {{ clinic_name }}{% endblock %}
+{% block page_title %}ضبط عطلة جديدة{% endblock %}
+{% block breadcrumb %}<a href="{{ url_for('holidays_list') }}">العطلات</a> / ضبط جديدة{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-8">
+    <div class="card shadow-sm">
+      <div class="card-header bg-white">
+        <i class="fas fa-calendar-xmark text-primary"></i> <strong>ضبط عطلة وإعادة جدولة المواعيد</strong>
+      </div>
+      <div class="card-body">
+        <form method="post" id="holidayForm">
+          <div class="mb-3">
+            <label class="form-label">📅 تاريخ بداية العطلة <span class="text-danger">*</span></label>
+            <input type="date" name="start_date" class="form-control" required
+                   min="{{ today.strftime('%Y-%m-%d') }}"
+                   value="{{ request.args.get('start', '') }}">
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">طريقة تحديد نهاية العطلة</label>
+            <div class="btn-group w-100 mb-2" role="group">
+              <input type="radio" class="btn-check" name="end_mode" id="endModeDate" value="date" checked onchange="toggleEndMode()">
+              <label class="btn btn-outline-primary" for="endModeDate">📅 تاريخ نهاية</label>
+              <input type="radio" class="btn-check" name="end_mode" id="endModeDays" value="days" onchange="toggleEndMode()">
+              <label class="btn btn-outline-primary" for="endModeDays">🔢 عدد أيام</label>
+            </div>
+          </div>
+
+          <div class="mb-3" id="endDateGroup">
+            <label class="form-label">📅 تاريخ نهاية العطلة</label>
+            <input type="date" name="end_date" class="form-control" id="endDateInput">
+            <div class="form-text">آخر يوم في العطلة (شامل).</div>
+          </div>
+
+          <div class="mb-3" id="daysGroup" style="display:none">
+            <label class="form-label">🔢 عدد أيام العطلة</label>
+            <input type="number" name="days_count" class="form-control" min="1" max="365"
+                   placeholder="مثال: 10" id="daysInput">
+            <div class="form-text">يُحسب تاريخ النهاية تلقائياً = بداية + (عدد الأيام - 1).</div>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">📝 سبب العطلة (اختياري)</label>
+            <input type="text" name="reason" class="form-control"
+                   placeholder="مثال: عطلة سنوية / عيد / ظرف طارئ">
+          </div>
+
+          <div class="alert alert-warning">
+            <i class="fas fa-triangle-exclamation"></i>
+            <b>تنبيه:</b> عند الحفظ، سيتم:
+            <ul class="mb-0">
+              <li>نقل كل المواعيد (المؤكدة + المعلقة) في نطاق العطلة تلقائياً.</li>
+              <li>إرسال إشعار لكل مريض متأثر برسالة تيليجرام/بريد.</li>
+              <li>إرسال ملخص لك (للطبيب) بعدد المواعيد المنقولة.</li>
+              <li>إرسال تذكير للمرضى قبل يوم من استئناف العمل.</li>
+            </ul>
+          </div>
+
+          <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-primary">
+              <i class="fas fa-save"></i> حفظ العطلة وإعادة الجدولة
+            </button>
+            <a href="{{ url_for('holidays_list') }}" class="btn btn-outline-secondary">إلغاء</a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function toggleEndMode() {
+  const dateMode = document.getElementById('endModeDate').checked;
+  document.getElementById('endDateGroup').style.display = dateMode ? '' : 'none';
+  document.getElementById('daysGroup').style.display = dateMode ? 'none' : '';
+  // أفرغ الحقل غير المستخدم حتى لا يُرسل
+  if (dateMode) {
+    document.getElementById('daysInput').value = '';
+  } else {
+    document.getElementById('endDateInput').value = '';
+  }
+}
+</script>
+{% endblock %}

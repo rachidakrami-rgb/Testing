@@ -1,0 +1,776 @@
+{# فقاعات المحادثات العائمة + chatbox عائم — تظهر للطبيب على كل الصفحات #}
+<div id="floatMsgWidget" class="float-msg-widget" hidden>
+  {# الزر العائم #}
+  <button class="float-msg-fab" id="floatMsgFab" type="button" aria-label="المحادثات">
+    <i class="fas fa-comments"></i>
+    <span class="float-msg-fab-badge" id="floatMsgFabBadge" hidden>0</span>
+    <span class="float-msg-fab-ping" id="floatMsgFabPing" hidden></span>
+  </button>
+
+  {# اللوحة — لها حالتان: list (قائمة الفقاعات) و chat (محادثة مفتوحة) #}
+  <div class="float-msg-panel" id="floatMsgPanel" hidden>
+
+    {# رأس اللوحة في حالة list #}
+    <div class="float-msg-panel-head float-msg-head-list" id="floatMsgHeadList">
+      <div><i class="fas fa-comments"></i> <strong>محادثات المرضى</strong></div>
+      <button class="float-msg-close" id="floatMsgClose" type="button" aria-label="إغلاق">&times;</button>
+    </div>
+
+    {# رأس اللوحة في حالة chat #}
+    <div class="float-msg-panel-head float-msg-head-chat" id="floatMsgHeadChat" hidden>
+      <button class="float-msg-back" id="floatMsgBack" type="button" aria-label="رجوع">
+        <i class="fas fa-arrow-right"></i>
+      </button>
+      <div class="float-msg-chat-title">
+        <div class="float-msg-chat-name" id="floatMsgChatName">—</div>
+        <div class="float-msg-chat-sub" id="floatMsgChatSub"></div>
+      </div>
+      <a class="float-msg-open-full" id="floatMsgOpenFull" href="#" target="_blank" rel="noopener" title="فتح الصفحة الكاملة">
+        <i class="fas fa-up-right-from-square"></i>
+      </a>
+    </div>
+
+    {# جسم اللوحة — list view #}
+    <div class="float-msg-bubbles" id="floatMsgBubbles"></div>
+
+    {# جسم اللوحة — chat view #}
+    <div class="float-msg-chatbody" id="floatMsgChatBody" hidden></div>
+
+    {# فوتر — list view #}
+    <div class="float-msg-panel-foot float-msg-foot-list" id="floatMsgFootList">
+      <a href="{{ url_for('messages_list') }}" class="float-msg-all">
+        <i class="fas fa-list"></i> كل المحادثات
+      </a>
+    </div>
+
+    {# فوتر — chat view (إدخال الرد) #}
+    <div class="float-msg-panel-foot float-msg-foot-chat" id="floatMsgFootChat" hidden>
+      <form class="float-msg-reply-form" id="floatMsgReplyForm">
+        <textarea id="floatMsgReplyInput" class="float-msg-reply-input"
+                  rows="1" placeholder="اكتب ردك هنا..."></textarea>
+        <button type="submit" class="float-msg-reply-send" id="floatMsgReplySend" aria-label="إرسال">
+          <i class="fas fa-paper-plane"></i>
+        </button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<style>
+.float-msg-widget {
+  position: fixed;
+  bottom: 20px;
+  inset-inline-end: 20px;
+  z-index: 1500;
+  font-family: 'Cairo', Arial, sans-serif;
+}
+
+/* ===== الزر العائم ===== */
+.float-msg-fab {
+  width: 60px; height: 60px;
+  border-radius: 50%;
+  border: none;
+  background: linear-gradient(135deg, var(--primary, #0d9488), #0f766e);
+  color: #fff;
+  font-size: 24px;
+  cursor: pointer;
+  box-shadow: 0 6px 20px rgba(13, 148, 136, 0.45);
+  display: flex; align-items: center; justify-content: center;
+  position: relative;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+.float-msg-fab:hover { transform: translateY(-2px) scale(1.05); box-shadow: 0 10px 26px rgba(13,148,136,.55); }
+.float-msg-fab:active { transform: scale(0.95); }
+.float-msg-fab-badge {
+  position: absolute;
+  top: -4px; inset-inline-end: -4px;
+  background: #ef4444;
+  color: #fff;
+  font-size: 11px; font-weight: 700;
+  min-width: 20px; height: 20px;
+  border-radius: 10px;
+  padding: 0 5px;
+  display: flex; align-items: center; justify-content: center;
+  border: 2px solid #fff;
+}
+.float-msg-fab-ping {
+  position: absolute; inset: 0;
+  border-radius: 50%;
+  background: var(--primary, #0d9488);
+  opacity: 0.55;
+  animation: floatMsgPing 1s ease-out infinite;
+  z-index: -1;
+}
+@keyframes floatMsgPing {
+  0% { transform: scale(1); opacity: 0.55; }
+  100% { transform: scale(1.8); opacity: 0; }
+}
+
+/* ===== اللوحة ===== */
+.float-msg-panel {
+  position: absolute;
+  bottom: 76px;
+  inset-inline-end: 0;
+  width: 360px;
+  max-width: calc(100vw - 40px);
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.18);
+  overflow: hidden;
+  display: flex; flex-direction: column;
+  max-height: 75vh;
+  animation: floatMsgIn 0.18s ease-out;
+}
+@keyframes floatMsgIn {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.float-msg-panel-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  padding: 10px 12px;
+  background: linear-gradient(135deg, var(--primary, #0d9488), #0f766e);
+  color: #fff;
+}
+.float-msg-panel-head strong { font-size: 14px; }
+.float-msg-close, .float-msg-back, .float-msg-open-full {
+  background: rgba(255,255,255,0.2);
+  border: none; color: #fff;
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  font-size: 14px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  text-decoration: none;
+  transition: background 0.15s ease;
+}
+.float-msg-close:hover, .float-msg-back:hover, .float-msg-open-full:hover { background: rgba(255,255,255,0.35); }
+
+.float-msg-chat-title { flex: 1; min-width: 0; text-align: center; }
+.float-msg-chat-name { font-weight: 700; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.float-msg-chat-sub { font-size: 11px; opacity: 0.85; }
+.float-msg-chat-sub .tg-tag {
+  background: rgba(255,255,255,0.25); padding: 0 6px; border-radius: 8px;
+  margin-inline-start: 4px;
+}
+
+/* ===== قائمة الفقاعات (list view) ===== */
+.float-msg-bubbles {
+  overflow-y: auto;
+  padding: 8px;
+  flex: 1;
+  scrollbar-width: thin;
+}
+.float-msg-bubbles::-webkit-scrollbar { width: 6px; }
+.float-msg-bubbles::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+
+.float-msg-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px;
+  border-radius: 12px;
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
+  position: relative;
+  background: transparent;
+  border: none;
+  width: 100%;
+  text-align: start;
+  font: inherit;
+  transition: background 0.15s ease;
+}
+.float-msg-item:hover { background: #f1f5f9; }
+.float-msg-item + .float-msg-item { margin-top: 2px; }
+.float-msg-item.unread { background: #ecfdf5; }
+.float-msg-item.unread:hover { background: #d1fae5; }
+
+.float-msg-avatar {
+  width: 44px; height: 44px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #14b8a6, #0f766e);
+  color: #fff;
+  font-weight: 700; font-size: 18px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  position: relative;
+}
+.float-msg-avatar.has-telegram::after {
+  content: "";
+  position: absolute;
+  bottom: -1px; inset-inline-end: -1px;
+  width: 16px; height: 16px;
+  background: #38bdf8;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'%3E%3Cpath d='M9.78 18.65l.28-4.23 7.68-6.92c.34-.31-.07-.46-.52-.19L7.74 13.3 3.64 12c-.88-.25-.89-.86.2-1.3l15.97-6.16c.73-.33 1.43.18 1.15 1.3l-2.72 12.81c-.19.91-.74 1.13-1.5.71L12.6 16.3l-1.99 1.93c-.23.23-.42.42-.83.42z'/%3E%3C/svg%3E");
+  background-size: 10px;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+.float-msg-body { flex: 1; min-width: 0; }
+.float-msg-top {
+  display: flex; justify-content: space-between; align-items: center; gap: 6px;
+}
+.float-msg-name {
+  font-weight: 700; font-size: 13px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  color: #0f172a;
+}
+.float-msg-time { font-size: 11px; color: #94a3b8; flex-shrink: 0; }
+.float-msg-preview {
+  font-size: 12px; color: #64748b;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  margin-top: 2px;
+}
+.float-msg-preview.from-doctor::before { content: "أنت: "; color: #0d9488; font-weight: 600; }
+.float-msg-unread {
+  position: absolute;
+  top: 10px; inset-inline-end: 10px;
+  background: #ef4444; color: #fff;
+  font-size: 10px; font-weight: 700;
+  min-width: 16px; height: 16px;
+  border-radius: 8px;
+  padding: 0 4px;
+  display: flex; align-items: center; justify-content: center;
+}
+.float-msg-empty {
+  padding: 30px 14px;
+  text-align: center;
+  color: #94a3b8;
+  font-size: 13px;
+}
+.float-msg-empty i { font-size: 28px; display: block; margin-bottom: 8px; opacity: 0.5; }
+
+/* ===== chatbox (chat view) ===== */
+.float-msg-chatbody {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+  background: #f8fafc;
+  scrollbar-width: thin;
+  min-height: 240px;
+}
+.float-msg-chatbody::-webkit-scrollbar { width: 6px; }
+.float-msg-chatbody::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+
+.float-chat-msg {
+  display: flex; margin-bottom: 8px;
+}
+.float-chat-msg.from-patient { justify-content: flex-start; }
+.float-chat-msg.from-doctor { justify-content: flex-end; }
+.float-chat-bubble {
+  max-width: 78%;
+  padding: 8px 12px;
+  border-radius: 14px;
+  font-size: 13px;
+  line-height: 1.5;
+  word-wrap: break-word;
+  white-space: pre-wrap;
+  position: relative;
+}
+.float-chat-msg.from-patient .float-chat-bubble {
+  background: #fff;
+  color: #0f172a;
+  border: 1px solid #e2e8f0;
+  border-bottom-start-start-radius: 4px;
+}
+.float-chat-msg.from-doctor .float-chat-bubble {
+  background: linear-gradient(135deg, #14b8a6, #0f766e);
+  color: #fff;
+  border-bottom-end-end-radius: 4px;
+}
+.float-chat-meta {
+  font-size: 10px;
+  opacity: 0.7;
+  margin-top: 3px;
+  display: block;
+}
+.float-chat-msg.from-doctor .float-chat-meta { color: rgba(255,255,255,0.85); }
+.float-chat-empty {
+  text-align: center;
+  color: #94a3b8;
+  padding: 30px 14px;
+  font-size: 13px;
+}
+.float-chat-empty i { font-size: 28px; display: block; margin-bottom: 8px; opacity: 0.5; }
+
+.float-msg-reply-form {
+  display: flex; align-items: flex-end; gap: 6px;
+}
+.float-msg-reply-input {
+  flex: 1;
+  border: 1px solid #cbd5e1;
+  border-radius: 12px;
+  padding: 8px 12px;
+  font-size: 13px;
+  font-family: inherit;
+  resize: none;
+  max-height: 90px;
+  outline: none;
+  transition: border-color 0.15s ease;
+  line-height: 1.4;
+}
+.float-msg-reply-input:focus { border-color: var(--primary, #0d9488); }
+.float-msg-reply-send {
+  width: 38px; height: 38px;
+  border-radius: 50%;
+  border: none;
+  background: linear-gradient(135deg, #14b8a6, #0f766e);
+  color: #fff;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  transition: transform 0.15s ease;
+}
+.float-msg-reply-send:hover { transform: scale(1.08); }
+.float-msg-reply-send:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+.float-msg-panel-foot {
+  border-top: 1px solid #e2e8f0;
+  padding: 8px;
+}
+.float-msg-all {
+  display: block;
+  text-align: center;
+  text-decoration: none;
+  color: var(--primary, #0d9488);
+  font-size: 13px; font-weight: 600;
+  padding: 8px;
+  border-radius: 8px;
+}
+.float-msg-all:hover { background: #f1f5f9; }
+
+@media (max-width: 576px) {
+  .float-msg-panel { width: calc(100vw - 40px); max-height: 80vh; }
+}
+</style>
+
+<script>
+(function () {
+  const widget = document.getElementById('floatMsgWidget');
+  if (!widget) return;
+
+  const fab = document.getElementById('floatMsgFab');
+  const fabBadge = document.getElementById('floatMsgFabBadge');
+  const fabPing = document.getElementById('floatMsgFabPing');
+  const panel = document.getElementById('floatMsgPanel');
+  const closeBtn = document.getElementById('floatMsgClose');
+  const backBtn = document.getElementById('floatMsgBack');
+
+  const headList = document.getElementById('floatMsgHeadList');
+  const headChat = document.getElementById('floatMsgHeadChat');
+  const bubblesEl = document.getElementById('floatMsgBubbles');
+  const chatBody = document.getElementById('floatMsgChatBody');
+  const footList = document.getElementById('floatMsgFootList');
+  const footChat = document.getElementById('floatMsgFootChat');
+
+  const chatName = document.getElementById('floatMsgChatName');
+  const chatSub = document.getElementById('floatMsgChatSub');
+  const openFullLink = document.getElementById('floatMsgOpenFull');
+  const replyForm = document.getElementById('floatMsgReplyForm');
+  const replyInput = document.getElementById('floatMsgReplyInput');
+  const replySend = document.getElementById('floatMsgReplySend');
+
+  let threads = [];
+  let totalUnread = 0;
+  let panelOpen = false;
+  let view = 'list';            // 'list' أو 'chat'
+  let currentPatientId = null;  // معرّف المريض في الـ chatbox المفتوح
+  let loadedMsgIds = new Set(); // لمنع تكرار الرسائل في الـ chatbox
+  let lastPingAt = 0;
+
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+      return {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c];
+    });
+  }
+
+  /* ========== التنبيه الصوتي (Web Audio API — نغمة لطيفة شبيهة بتيليجرام) ========== */
+  let audioCtx = null;
+  let soundEnabled = true;
+  function ensureAudio() {
+    if (audioCtx) return audioCtx;
+    try {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) { soundEnabled = false; return null; }
+      audioCtx = new AC();
+    } catch (e) { soundEnabled = false; return null; }
+    return audioCtx;
+  }
+  // نغمتان متتاليتان تعطيان صوت "ding" لطيف يشبه إشعارات تيليجرام
+  function playMessageSound() {
+    if (!soundEnabled) return;
+    const ctx = ensureAudio();
+    if (!ctx) return;
+    // المتصفحات تتطلب user gesture لتفعيل الصوت — نحاول ولن يحدث خطأ
+    if (ctx.state === 'suspended') { ctx.resume().catch(function(){}); }
+    const now = ctx.currentTime;
+    // النغمة الأولى (عالية)
+    const o1 = ctx.createOscillator();
+    const g1 = ctx.createGain();
+    o1.type = 'sine';
+    o1.frequency.setValueAtTime(880, now);          // A5
+    o1.frequency.exponentialRampToValueAtTime(1320, now + 0.08); // E6
+    g1.gain.setValueAtTime(0.0001, now);
+    g1.gain.exponentialRampToValueAtTime(0.25, now + 0.01);
+    g1.gain.exponentialRampToValueAtTime(0.0001, now + 0.18);
+    o1.connect(g1).connect(ctx.destination);
+    o1.start(now);
+    o1.stop(now + 0.2);
+    // النغمة الثانية (أعلى قليلاً) بعد الأولى مباشرة
+    const o2 = ctx.createOscillator();
+    const g2 = ctx.createGain();
+    o2.type = 'sine';
+    o2.frequency.setValueAtTime(1760, now + 0.13);   // A6
+    g2.gain.setValueAtTime(0.0001, now + 0.13);
+    g2.gain.exponentialRampToValueAtTime(0.18, now + 0.14);
+    g2.gain.exponentialRampToValueAtTime(0.0001, now + 0.32);
+    o2.connect(g2).connect(ctx.destination);
+    o2.start(now + 0.13);
+    o2.stop(now + 0.34);
+  }
+  // فعّل الصوت عند أول تفاعل من المستخدم (سياسة المتصفح)
+  function unlockAudio() {
+    ensureAudio();
+    if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume().catch(function(){});
+    document.removeEventListener('click', unlockAudio);
+    document.removeEventListener('keydown', unlockAudio);
+    document.removeEventListener('touchstart', unlockAudio);
+  }
+  document.addEventListener('click', unlockAudio);
+  document.addEventListener('keydown', unlockAudio);
+  document.addEventListener('touchstart', unlockAudio);
+
+  /* ========== عرض قائمة الفقاعات ========== */
+  function renderBubbles() {
+    if (!threads.length) {
+      bubblesEl.innerHTML = '<div class="float-msg-empty"><i class="fas fa-inbox"></i>لا توجد محادثات بعد</div>';
+      return;
+    }
+    bubblesEl.innerHTML = threads.map(function (t) {
+      const previewClass = 'float-msg-preview' + (t.last_sender === 'doctor' ? ' from-doctor' : '');
+      const unreadDot = t.unread > 0
+        ? '<span class="float-msg-unread">' + (t.unread > 9 ? '9+' : t.unread) + '</span>'
+        : '';
+      const avatarClass = 'float-msg-avatar' + (t.has_telegram ? ' has-telegram' : '');
+      return '<button class="float-msg-item' + (t.unread > 0 ? ' unread' : '') +
+        '" data-pid="' + t.patient_id + '" data-pname="' + esc(t.patient_name) + '">' +
+        '<div class="' + avatarClass + '">' + esc(t.patient_initials || '؟') + '</div>' +
+        '<div class="float-msg-body">' +
+          '<div class="float-msg-top">' +
+            '<span class="float-msg-name">' + esc(t.patient_name) + '</span>' +
+            '<span class="float-msg-time">' + esc(t.last_time) + '</span>' +
+          '</div>' +
+          '<div class="' + previewClass + '">' + esc(t.last_body) + '</div>' +
+        '</div>' +
+        unreadDot +
+      '</button>';
+    }).join('');
+    // ربط أحداث الضغط على الفقاعات لفتح الـ chatbox
+    bubblesEl.querySelectorAll('.float-msg-item').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        openChat(parseInt(btn.dataset.pid, 10), btn.dataset.pname);
+      });
+    });
+  }
+
+  function updateBadge() {
+    if (totalUnread > 0) {
+      fabBadge.hidden = false;
+      fabBadge.textContent = totalUnread > 9 ? '9+' : totalUnread;
+    } else {
+      fabBadge.hidden = true;
+    }
+  }
+
+  function ping() {
+    if (panelOpen && view === 'list') return;  // اللوحة مفتوحة = لا حاجة للوميض
+    const now = Date.now();
+    if (now - lastPingAt < 1500) return;
+    lastPingAt = now;
+    fabPing.hidden = false;
+    setTimeout(function () { fabPing.hidden = true; }, 1500);
+  }
+
+  async function loadThreads() {
+    try {
+      const resp = await fetch('{{ url_for("messages_threads_json") }}', {
+        headers: {'X-Requested-With': 'fetch'}
+      });
+      if (!resp.ok) return;
+      const data = await resp.json();
+      const prevUnread = totalUnread;
+      threads = data.threads || [];
+      totalUnread = data.unread_count || 0;
+      if (view === 'list') renderBubbles();
+      updateBadge();
+      if (totalUnread > prevUnread) ping();
+      document.querySelectorAll('.js-msg-badge').forEach(function (b) {
+        b.textContent = totalUnread;
+        b.style.display = totalUnread > 0 ? '' : 'none';
+      });
+    } catch (e) { /* تجاهل */ }
+  }
+
+  /* ========== فتح/إغلاق اللوحة والتنقل بين view ========== */
+  function showListView() {
+    view = 'list';
+    currentPatientId = null;
+    headList.hidden = false; headChat.hidden = true;
+    bubblesEl.hidden = false; chatBody.hidden = true;
+    footList.hidden = false; footChat.hidden = true;
+    renderBubbles();
+  }
+
+  function showChatView() {
+    view = 'chat';
+    headList.hidden = true; headChat.hidden = false;
+    bubblesEl.hidden = true; chatBody.hidden = false;
+    footList.hidden = true; footChat.hidden = false;
+  }
+
+  async function openChat(patientId, fallbackName) {
+    currentPatientId = patientId;
+    showChatView();
+    // عرض فوري باسم مؤقت أثناء التحميل
+    chatName.textContent = fallbackName || '...';
+    chatSub.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جارٍ التحميل';
+    openFullLink.href = '{{ url_for("messages_list") }}/' + patientId;
+    chatBody.innerHTML = '<div class="float-chat-empty"><i class="fas fa-spinner fa-spin"></i></div>';
+    replyInput.value = '';
+    loadedMsgIds.clear();
+    try {
+      const resp = await fetch('/messages/' + patientId + '/messages.json', {
+        headers: {'X-Requested-With': 'fetch'}
+      });
+      if (!resp.ok) { chatBody.innerHTML = '<div class="float-chat-empty">تعذّر تحميل المحادثة</div>'; return; }
+      const data = await resp.json();
+      const p = data.patient;
+      // رأس الـ chatbox
+      chatName.textContent = p.full_name;
+      const subParts = [];
+      subParts.push('<span>' + esc(p.code) + '</span>');
+      if (p.phone) subParts.push('📞 <span>' + esc(p.phone) + '</span>');
+      if (p.has_telegram) subParts.push('<span class="tg-tag">تيليجرام</span>');
+      chatSub.innerHTML = subParts.join(' · ');
+      // الرسائل
+      if (!data.messages.length) {
+        chatBody.innerHTML = '<div class="float-chat-empty"><i class="fas fa-comments"></i>لا توجد رسائل بعد</div>';
+      } else {
+        chatBody.innerHTML = '';
+        data.messages.forEach(function (m) { appendChatMessage(m); loadedMsgIds.add(m.id); });
+        scrollChatToBottom();
+      }
+      // بعد فتح المحادثة، الرسائل صارت مقروءة — حدّث العدّاد
+      const t = threads.find(function (x) { return x.patient_id === patientId; });
+      if (t) t.unread = 0;
+      recomputeUnreadFromThreads();
+      if (view === 'list') renderBubbles();
+      // ركّز على حقل الإدخال
+      setTimeout(function () { replyInput.focus(); }, 100);
+    } catch (e) {
+      chatBody.innerHTML = '<div class="float-chat-empty">خطأ في الشبكة</div>';
+    }
+  }
+
+  function recomputeUnreadFromThreads() {
+    totalUnread = threads.reduce(function (s, t) { return s + (t.unread || 0); }, 0);
+    updateBadge();
+    document.querySelectorAll('.js-msg-badge').forEach(function (b) {
+      b.textContent = totalUnread;
+      b.style.display = totalUnread > 0 ? '' : 'none';
+    });
+  }
+
+  function appendChatMessage(m) {
+    const wrap = document.createElement('div');
+    wrap.className = 'float-chat-msg ' + (m.sender === 'patient' ? 'from-patient' : 'from-doctor');
+    wrap.setAttribute('data-msg-id', m.id);
+    const channelTxt = m.channel === 'telegram' ? '· تيليجرام' : (m.channel === 'portal' ? '· البوابة' : '');
+    const dateStr = (m.date || '') + ' ' + (m.time || '');
+    wrap.innerHTML =
+      '<div class="float-chat-bubble">' + esc(m.body) +
+      '<span class="float-chat-meta">' + (m.sender === 'patient' ? 'المريض' : 'الطبيب') +
+      ' — ' + esc(dateStr) + ' ' + channelTxt + '</span></div>';
+    // إزالة رسالة "لا توجد رسائل" إن وُجدت
+    const empty = chatBody.querySelector('.float-chat-empty');
+    if (empty) empty.remove();
+    chatBody.appendChild(wrap);
+  }
+
+  function scrollChatToBottom() {
+    chatBody.scrollTop = chatBody.scrollHeight;
+  }
+
+  // إرسال رد الطبيب عبر AJAX
+  replyForm.addEventListener('submit', async function (e) {
+    e.preventDefault();
+    if (!currentPatientId) return;
+    const body = replyInput.value.trim();
+    if (!body) return;
+    replySend.disabled = true;
+    replyInput.value = '';
+    // اضبط الارتفاع للسطر واحد
+    replyInput.style.height = 'auto';
+    try {
+      const fd = new FormData();
+      fd.append('body', body);
+      const resp = await fetch('/messages/' + currentPatientId + '/reply', {
+        method: 'POST',
+        body: fd,
+        headers: {
+          'X-Requested-With': 'XMLHttpRequest',
+          'X-CSRF-Token': window.CSRF_TOKEN || ''
+        }
+      });
+      if (!resp.ok) throw new Error('HTTP ' + resp.status);
+      const data = await resp.json();
+      if (data && data.ok && data.message) {
+        if (!loadedMsgIds.has(data.message.id)) {
+          appendChatMessage(data.message);
+          loadedMsgIds.add(data.message.id);
+          scrollChatToBottom();
+        }
+      } else {
+        // أعِد النص للـ input حتى لا يضيع
+        replyInput.value = body;
+        alert('تعذّر إرسال الرد');
+      }
+    } catch (err) {
+      replyInput.value = body;
+      alert('تعذّر إرسال الرد: ' + err.message);
+    }
+    replySend.disabled = false;
+    replyInput.focus();
+  });
+
+  // ارتفاع textarea يتكيف مع المحتوى
+  replyInput.addEventListener('input', function () {
+    replyInput.style.height = 'auto';
+    replyInput.style.height = Math.min(replyInput.scrollHeight, 90) + 'px';
+  });
+  // Enter للإرسال، Shift+Enter لسطر جديد
+  replyInput.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      replyForm.dispatchEvent(new Event('submit'));
+    }
+  });
+
+  /* ========== التحكم باللوحة ========== */
+  function openPanel() {
+    panel.hidden = false;
+    panelOpen = true;
+    showListView();
+    loadThreads();
+  }
+  function closePanel() {
+    panel.hidden = true;
+    panelOpen = false;
+  }
+  fab.addEventListener('click', function () {
+    if (panelOpen) closePanel(); else openPanel();
+  });
+  closeBtn.addEventListener('click', closePanel);
+  backBtn.addEventListener('click', showListView);
+  document.addEventListener('click', function (e) {
+    if (!panelOpen) return;
+    if (!widget.contains(e.target)) closePanel();
+  });
+
+  /* ========== SSE ========== */
+  let es = null;
+  function connectSSE() {
+    try {
+      es = new EventSource('{{ url_for("messages_stream") }}');
+      es.addEventListener('message_new', function (ev) {
+        let m;
+        try { m = JSON.parse(ev.data); } catch (e) { return; }
+        // 1) حدّث قائمة الفقاعات محلياً
+        let found = null;
+        threads = threads.filter(function (t) {
+          if (t.patient_id === m.patient_id) { found = t; return false; }
+          return true;
+        });
+        const body = m.body || '';
+        const preview = body.length > 80 ? body.slice(0, 80) + '…' : body;
+        if (found) {
+          found.last_body = preview;
+          found.last_sender = m.sender;
+          found.last_time = m.time;
+          found.last_timestamp = m.timestamp;
+          if (m.sender === 'patient') found.unread = (found.unread || 0) + 1;
+        } else {
+          found = {
+            patient_id: m.patient_id,
+            patient_name: m.patient_name,
+            patient_initials: m.patient_initials,
+            last_body: preview,
+            last_sender: m.sender,
+            last_time: m.time,
+            last_timestamp: m.timestamp,
+            unread: m.sender === 'patient' ? 1 : 0,
+            has_telegram: m.channel === 'telegram',
+            url: '{{ url_for("messages_list") }}/' + m.patient_id
+          };
+        }
+        threads.unshift(found);
+        if (view === 'list') renderBubbles();
+
+        // 2) إذا كانت رسالة مريض → صوّت + ping + حدّث العدّاد
+        if (m.sender === 'patient') {
+          // إذا كان الـ chatbox مفتوحاً لهذا المريض، لا تعِدّها غير مقروءة
+          if (view === 'chat' && currentPatientId === m.patient_id) {
+            // أضفها للـ chatbox فوراً
+            if (!loadedMsgIds.has(m.id)) {
+              appendChatMessage({
+                id: m.id, sender: m.sender, body: m.body, channel: m.channel,
+                time: m.time, date: ''
+              });
+              loadedMsgIds.add(m.id);
+              scrollChatToBottom();
+            }
+            // لا صوت، لا ping، لا زيادة عدّاد (المستخدم يشاهد المحادثة الآن)
+          } else {
+            // رسالة من مريض آخر أو اللوحة مغلقة → صوت + ping
+            totalUnread += 1;
+            updateBadge();
+            playMessageSound();
+            ping();
+          }
+        } else {
+          // رد طبيب (من نافذة أخرى) — أضفه للـ chatbox إن كان مفتوحاً لنفس المريض
+          if (view === 'chat' && currentPatientId === m.patient_id) {
+            if (!loadedMsgIds.has(m.id)) {
+              appendChatMessage({
+                id: m.id, sender: m.sender, body: m.body, channel: m.channel,
+                time: m.time, date: ''
+              });
+              loadedMsgIds.add(m.id);
+              scrollChatToBottom();
+            }
+          }
+        }
+        // حدّث شارة القائمة العلوية
+        document.querySelectorAll('.js-msg-badge').forEach(function (b) {
+          b.textContent = totalUnread;
+          b.style.display = totalUnread > 0 ? '' : 'none';
+        });
+      });
+      es.onerror = function () {
+        try { es.close(); } catch (e) {}
+        setTimeout(connectSSE, 5000);
+      };
+    } catch (e) {
+      setTimeout(connectSSE, 5000);
+    }
+  }
+
+  // ابدأ التشغيل
+  widget.hidden = false;
+  loadThreads();
+  connectSSE();
+  // تحديث دوري كاحتياط
+  setInterval(loadThreads, 30000);
+})();
+</script>

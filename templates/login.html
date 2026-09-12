@@ -1,0 +1,71 @@
+{% extends 'base_public.html' %}
+{% block title %}تسجيل الدخول - {{ clinic_name }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-10 col-lg-9">
+    <div class="text-center mb-4">
+      <h2><i class="fas fa-brain text-warning"></i> أهلاً بك في {{ clinic_name }}</h2>
+      <p class="text-muted">حدد نوع الزائر للمتابعة</p>
+    </div>
+
+    <div class="row g-4">
+      <!-- الطبيب -->
+      <div class="col-md-6">
+        <div class="card h-100 shadow-sm">
+          <div class="card-body">
+            <div class="text-center mb-3">
+              <i class="fas fa-user-md fa-3x text-primary"></i>
+              <h4 class="mt-3">دخول الطبيب</h4>
+              <p class="text-muted small">إدارة المرضى والمواعيد والفواتير والسجلات</p>
+            </div>
+            <button class="btn btn-primary w-100" type="button"
+                    onclick="document.getElementById('doctorLoginForm').classList.toggle('d-none')">
+              <i class="fas fa-lock"></i> تسجيل دخول الطبيب
+            </button>
+            <form method="post" action="{{ url_for('login_doctor') }}"
+                  id="doctorLoginForm" class="mt-3 {{ '' if login_error else 'd-none' }}">
+              <div class="mb-3">
+                <label class="form-label">اسم المستخدم</label>
+                <input type="text" name="username" class="form-control" required autofocus>
+              </div>
+              <div class="mb-3">
+                <label class="form-label">كلمة المرور</label>
+                <input type="password" name="password" class="form-control" required>
+              </div>
+              <button type="submit" class="btn btn-primary w-100">
+                <i class="fas fa-right-to-bracket"></i> دخول
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+
+      <!-- المريض -->
+      <div class="col-md-6">
+        <div class="card h-100 shadow-sm">
+          <div class="card-body">
+            <div class="text-center mb-3">
+              <i class="fas fa-user fa-3x text-success"></i>
+              <h4 class="mt-3">بوابة المريض</h4>
+              <p class="text-muted small">حجز موعد، عرض الأوقات المتاحة، طلب جلسة خاصة</p>
+            </div>
+            <a href="{{ url_for('portal_home') }}" class="btn btn-success w-100 mb-3">
+              <i class="fas fa-arrow-left"></i> الدخول كبوابة المريض
+            </a>
+
+            <!-- متابعة تذكرة من واجهة الدخول -->
+            <div class="border rounded p-3 bg-light">
+              <h6 class="mb-2"><i class="fas fa-ticket text-warning"></i> متابعة حجز برقم التذكرة</h6>
+              <form method="get" action="{{ url_for('portal_ticket') }}" class="d-flex gap-2">
+                <input type="text" name="code" class="form-control" placeholder="مثال: TK-A1B2C3" required>
+                <button type="submit" class="btn btn-outline-primary px-3">استعلام</button>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

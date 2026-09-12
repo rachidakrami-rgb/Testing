@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+{% block title %}زيارة - {{ clinic_name }}{% endblock %}
+{% block page_title %}تفاصيل الزيارة{% endblock %}
+{% block breadcrumb %}<a href="{{ url_for('patient_view', id=visit.patient_id) }}">{{ visit.patient.full_name }}</a> / زيارة {{ visit.visit_date.strftime('%Y-%m-%d') }}{% endblock %}
+
+{% block content %}
+<div class="card">
+  <div class="card-header">
+    <span><i class="fas fa-clipboard-list text-primary"></i> زيارة بتاريخ {{ visit.visit_date.strftime('%Y-%m-%d') }}</span>
+    <a href="{{ url_for('patient_view', id=visit.patient_id) }}" class="btn btn-sm btn-outline-primary">ملف المريض</a>
+  </div>
+  <div class="card-body">
+    <div class="row g-3">
+      <div class="col-md-6"><label class="form-label text-muted">المريض</label><h5>{{ visit.patient.full_name }}</h5></div>
+      <div class="col-md-3"><label class="form-label text-muted">الرسوم</label><h5>{{ visit.fee }} د.ج</h5></div>
+      <div class="col-md-3"><label class="form-label text-muted">تقييم المزاج</label><h5>{{ visit.mood_assessment or '-' }}</h5></div>
+      {% if visit.chief_complaint %}<div class="col-12"><label class="form-label text-muted">الشكوى الرئيسية</label><p>{{ visit.chief_complaint }}</p></div>{% endif %}
+      {% if visit.diagnosis %}<div class="col-md-6"><label class="form-label text-muted">التشخيص</label><p>{{ visit.diagnosis }}</p></div>{% endif %}
+      {% if visit.treatment %}<div class="col-md-6"><label class="form-label text-muted">العلاج المقدم</label><p>{{ visit.treatment }}</p></div>{% endif %}
+      {% if visit.prescription %}<div class="col-md-6"><label class="form-label text-muted">الوصفة الطبية</label><p>{{ visit.prescription }}</p></div>{% endif %}
+      {% if visit.session_notes %}<div class="col-md-6"><label class="form-label text-muted">ملاحظات الجلسة</label><p>{{ visit.session_notes }}</p></div>{% endif %}
+      {% if visit.next_appointment %}<div class="col-md-6"><label class="form-label text-muted">الموعد القادم المقترح</label><p>{{ visit.next_appointment.strftime('%Y-%m-%d') }}</p></div>{% endif %}
+    </div>
+    <hr>
+    <form method="post" action="{{ url_for('visit_delete', id=visit.id) }}" class="d-inline">
+      <button class="btn btn-outline-danger btn-delete"><i class="fas fa-trash"></i> حذف الزيارة</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

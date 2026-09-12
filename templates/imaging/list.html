@@ -1,0 +1,48 @@
+{% extends 'base.html' %}
+{% block title %}متابعة حالة - {{ clinic_name }}{% endblock %}
+{% block page_title %}متابعة الحالة{% endblock %}
+{% block breadcrumb %}كل ملفات المتابعة{% endblock %}
+
+{% block content %}
+{% include '_patients_subtabs.html' %}
+<div class="card">
+  <div class="card-header">
+    <span><i class="fas fa-notes-medical text-primary"></i> ملفات المتابعة ({{ images|length }})</span>
+    <a href="{{ url_for('imaging_new') }}" class="btn btn-primary btn-sm"><i class="fas fa-upload"></i> إضافة ملف</a>
+  </div>
+  <div class="card-body">
+    {% if images %}
+    <div class="row g-3">
+      {% for img in images %}
+      <div class="col-md-3 col-sm-6">
+        <div class="card h-100">
+          <div class="card-body text-center p-2">
+            {% if img.filename.lower().endswith(('.png','.jpg','.jpeg','.gif','.bmp')) %}
+            <img src="{{ url_for('uploaded_file', filename=img.filename) }}" class="img-fluid rounded mb-2" style="max-height:140px">
+            {% elif img.filename.lower().endswith(('.mp3','.mp4')) %}
+            <i class="fas fa-microphone-alt mb-2" style="font-size:3rem;color:#4f46e5"></i>
+            <audio controls class="w-100 mb-2"><source src="{{ url_for('uploaded_file', filename=img.filename) }}">متصفحك لا يدعم تشغيل الصوت</audio>
+            {% else %}
+            <i class="fas fa-file-medical" style="font-size:3rem;color:#4f46e5"></i>
+            {% endif %}
+            <small class="d-block text-truncate fw-bold">{{ img.original_name }}</small>
+            <small class="text-muted">{{ {'photo':'صورة','audio':'تسجيل صوتي'}.get(img.file_type, 'ملف') }}</small>
+            <small class="d-block text-muted">{{ img.upload_date.strftime('%Y-%m-%d') }}</small>
+            <small class="d-block"><a href="{{ url_for('patient_view', id=img.patient_id) }}">{{ img.patient.full_name }}</a></small>
+            <div class="mt-1">
+              <a href="{{ url_for('uploaded_file', filename=img.filename) }}" class="btn btn-sm btn-outline-primary" target="_blank"><i class="fas fa-download"></i></a>
+              <form method="post" action="{{ url_for('imaging_delete', id=img.id) }}" class="d-inline">
+                <button class="btn btn-sm btn-outline-danger btn-delete"><i class="fas fa-trash"></i></button>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state"><i class="fas fa-notes-medical"></i><p>لا توجد ملفات متابعة</p></div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

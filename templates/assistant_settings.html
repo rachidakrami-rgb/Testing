@@ -1,0 +1,255 @@
+{% extends 'base.html' %}
+{% block title %}إعدادات المساعد الذكي - {{ clinic_name }}{% endblock %}
+{% block page_title %}إعدادات المساعد الذكي{% endblock %}
+{% block breadcrumb %}<a href="{{ url_for('settings') }}">الإعدادات</a> / المساعد الذكي{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-10">
+    {# بطاقة حالة المزودين #}
+    <div class="card shadow-sm mb-3">
+      <div class="card-header bg-white">
+        <i class="fas fa-robot text-primary"></i> <strong>حالة المزودين</strong>
+      </div>
+      <div class="card-body">
+        {% if not any_configured %}
+        <div class="alert alert-warning mb-0">
+          <i class="fas fa-triangle-exclamation"></i>
+          لا يوجد أي مزوّد مُفعّل. أدخل مفتاحاً واحداً على الأقل أدناه لتفعيل المساعد.
+        </div>
+        {% else %}
+        <div class="row g-2">
+          {% for p in providers_status %}
+          <div class="col-md-4">
+            <div class="card border-{{ 'success' if p.configured else 'secondary' }}">
+              <div class="card-body p-2">
+                <div class="d-flex justify-content-between align-items-center">
+                  <strong>{{ p.name }}</strong>
+                  {% if p.configured %}
+                    <span class="badge bg-success">✅ مفعّل</span>
+                  {% else %}
+                    <span class="badge bg-secondary">غير مفعّل</span>
+                  {% endif %}
+                </div>
+                <small class="text-muted">
+                  {% if p.configured %}
+                    المصدر: {{ p.key_source }}
+                    {% if p.has_asr %} · يدعم ASR{% endif %}
+                  {% else %}
+                    أدخل المفتاح أدناه
+                  {% endif %}
+                </small>
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    {# بطاقة إدخال المفاتيح #}
+    <div class="card shadow-sm mb-3">
+      <div class="card-header bg-white">
+        <i class="fas fa-key text-primary"></i> <strong>مفاتيح API</strong>
+      </div>
+      <div class="card-body">
+        <form method="post" action="{{ url_for('assistant_settings') }}" id="keysForm">
+          <p class="text-muted small">
+            أدخل مفتاحاً واحداً على الأقل. المساعد يستخدم المزوّد المفضل أولاً ثم ينتقل تلقائياً عند الفشل.
+            المفاتيح تُحفظ في قاعدة البيانات (آمنة، لا تُكتب في الكود).
+          </p>
+
+          {# Groq #}
+          <div class="mb-3">
+            <label class="form-label">
+              <i class="fas fa-bolt text-warning"></i>
+              <strong>Groq</strong>
+              <span class="badge bg-success-subtle text-success-emphasis">مجاني · الأسرع · يدعم الصوت</span>
+            </label>
+            <div class="input-group">
+              <input type="password" name="groq_api_key" id="groqKey" class="form-control"
+                     value="{{ groq_api_key }}" placeholder="gsk_..." autocomplete="new-password">
+              <button type="button" class="btn btn-outline-secondary toggle-key" data-target="groqKey">
+                <i class="fas fa-eye"></i>
+              </button>
+              <button type="button" class="btn btn-outline-info test-btn" data-provider="Groq" data-key-input="groqKey">
+                <i class="fas fa-vial"></i> اختبار
+              </button>
+            </div>
+            <div class="form-text">
+              احصل عليه من <a href="https://console.groq.com/keys" target="_blank">console.groq.com/keys</a> — المفاتيح تبدأ بـ <code>gsk_</code>
+            </div>
+            <div class="test-result" id="result-Groq"></div>
+          </div>
+
+          {# Gemini #}
+          <div class="mb-3">
+            <label class="form-label">
+              <i class="fab fa-google text-info"></i>
+              <strong>Google Gemini</strong>
+              <span class="badge bg-success-subtle text-success-emphasis">مجاني · بديل</span>
+            </label>
+            <div class="input-group">
+              <input type="password" name="gemini_api_key" id="geminiKey" class="form-control"
+                     value="{{ gemini_api_key }}" placeholder="AIza..." autocomplete="new-password">
+              <button type="button" class="btn btn-outline-secondary toggle-key" data-target="geminiKey">
+                <i class="fas fa-eye"></i>
+              </button>
+              <button type="button" class="btn btn-outline-info test-btn" data-provider="Gemini" data-key-input="geminiKey">
+                <i class="fas fa-vial"></i> اختبار
+              </button>
+            </div>
+            <div class="form-text">
+              احصل عليه من <a href="https://aistudio.google.com/apikey" target="_blank">aistudio.google.com/apikey</a> — المفاتيح تبدأ بـ <code>AIza</code>
+              <br><small class="text-warning">ملاحظة: قد لا يعمل Gemini من كل الدول. إذا فشل، استخدم Groq.</small>
+            </div>
+            <div class="test-result" id="result-Gemini"></div>
+          </div>
+
+          {# Z.ai #}
+          <div class="mb-3">
+            <label class="form-label">
+              <i class="fas fa-brain text-primary"></i>
+              <strong>Z.ai (GLM-5.3)</strong>
+              <span class="badge bg-warning-subtle text-warning-emphasis">مدفوع · احتياطي</span>
+            </label>
+            <div class="input-group">
+              <input type="password" name="zai_api_key" id="zaiKey" class="form-control"
+                     value="{{ zai_api_key }}" placeholder="..." autocomplete="new-password">
+              <button type="button" class="btn btn-outline-secondary toggle-key" data-target="zaiKey">
+                <i class="fas fa-eye"></i>
+              </button>
+              <button type="button" class="btn btn-outline-info test-btn" data-provider="Z.ai" data-key-input="zaiKey">
+                <i class="fas fa-vial"></i> اختبار
+              </button>
+            </div>
+            <div class="form-text">
+              احصل عليه من <a href="https://z.ai" target="_blank">z.ai</a> — يحتاج رصيداً مدفوعاً.
+            </div>
+            <div class="test-result" id="result-Z.ai"></div>
+          </div>
+
+          {# Cerebras #}
+          <div class="mb-3">
+            <label class="form-label">
+              <i class="fas fa-microchip text-primary"></i>
+              <strong>Cerebras (gpt-oss-120b)</strong>
+              <span class="badge bg-success-subtle text-success-emphasis">سريع جداً · احتياطي</span>
+            </label>
+            <div class="input-group">
+              <input type="password" name="cerebras_api_key" id="cerebrasKey" class="form-control"
+                     value="{{ cerebras_api_key }}" placeholder="csk-..." autocomplete="new-password">
+              <button type="button" class="btn btn-outline-secondary toggle-key" data-target="cerebrasKey">
+                <i class="fas fa-eye"></i>
+              </button>
+              <button type="button" class="btn btn-outline-info test-btn" data-provider="Cerebras" data-key-input="cerebrasKey">
+                <i class="fas fa-vial"></i> اختبار
+              </button>
+            </div>
+            <div class="form-text">
+              احصل عليه من <a href="https://cloud.cerebras.ai" target="_blank">cloud.cerebras.ai</a>
+            </div>
+            <div class="test-result" id="result-Cerebras"></div>
+          </div>
+
+          {# OpenRouter #}
+          <div class="mb-3">
+            <label class="form-label">
+              <i class="fas fa-route text-primary"></i>
+              <strong>OpenRouter</strong>
+              <span class="badge bg-warning-subtle text-warning-emphasis">احتياطي أخير</span>
+            </label>
+            <div class="input-group">
+              <input type="password" name="openrouter_api_key" id="openrouterKey" class="form-control"
+                     value="{{ openrouter_api_key }}" placeholder="sk-or-..." autocomplete="new-password">
+              <button type="button" class="btn btn-outline-secondary toggle-key" data-target="openrouterKey">
+                <i class="fas fa-eye"></i>
+              </button>
+              <button type="button" class="btn btn-outline-info test-btn" data-provider="OpenRouter" data-key-input="openrouterKey">
+                <i class="fas fa-vial"></i> اختبار
+              </button>
+            </div>
+            <div class="form-text">
+              احصل عليه من <a href="https://openrouter.ai/keys" target="_blank">openrouter.ai/keys</a> — مدفوع حسب الاستخدام.
+            </div>
+            <div class="test-result" id="result-OpenRouter"></div>
+          </div>
+
+          <hr>
+
+          {# المزوّد المفضل #}
+          <div class="mb-3">
+            <label class="form-label"><i class="fas fa-star text-warning"></i> <strong>المزوّد المفضل (اختياري)</strong></label>
+            <select name="preferred_provider" class="form-select">
+              <option value="">تلقائي (Groq → Gemini → Z.ai → Cerebras → OpenRouter)</option>
+              <option value="Groq" {% if preferred_provider == 'Groq' %}selected{% endif %}>Groq أولاً</option>
+              <option value="Gemini" {% if preferred_provider == 'Gemini' %}selected{% endif %}>Gemini أولاً</option>
+              <option value="Z.ai" {% if preferred_provider == 'Z.ai' %}selected{% endif %}>Z.ai أولاً</option>
+              <option value="Cerebras" {% if preferred_provider == 'Cerebras' %}selected{% endif %}>Cerebras أولاً</option>
+              <option value="OpenRouter" {% if preferred_provider == 'OpenRouter' %}selected{% endif %}>OpenRouter أولاً</option>
+            </select>
+            <div class="form-text">المساعد يجرب المزوّد المفضل أولاً، فإن فشل ينتقل للتالي.</div>
+          </div>
+
+          <button type="submit" class="btn btn-primary">
+            <i class="fas fa-save"></i> حفظ المفاتيح
+          </button>
+        </form>
+      </div>
+    </div>
+
+    {# معلومات #}
+    <div class="alert alert-info">
+      <i class="fas fa-info-circle"></i>
+      <b>كيف يعمل المساعد؟</b>
+      <ul class="mb-0 mt-1">
+        <li><b>المحادثة (LLM):</b> يستخدم أول مزوّد متاح بالترتيب المفضل.</li>
+        <li><b>الإدخال الصوتي (ASR):</b> Groq Whisper (إن متاح) أو Web Speech API في المتصفح.</li>
+        <li><b>الإخراج الصوتي (TTS):</b> Web Speech API دائماً (مجاني).</li>
+        <li>المفاتيح تُحفظ في قاعدة البيانات — لا حاجة لإعادة تشغيل الخادم.</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<script>
+// إظهار/إخفاء المفتاح
+document.querySelectorAll('.toggle-key').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const input = document.getElementById(btn.dataset.target);
+    input.type = input.type === 'password' ? 'text' : 'password';
+    btn.querySelector('i').classList.toggle('fa-eye');
+    btn.querySelector('i').classList.toggle('fa-eye-slash');
+  });
+});
+
+// اختبار المزوّد
+document.querySelectorAll('.test-btn').forEach(btn => {
+  btn.addEventListener('click', async () => {
+    const provider = btn.dataset.provider;
+    const keyInput = document.getElementById(btn.dataset.keyInput);
+    const resultDiv = document.getElementById('result-' + provider);
+    const apiKey = keyInput.value.trim();
+    resultDiv.innerHTML = '<small class="text-muted"><i class="fas fa-spinner fa-spin"></i> جارٍ الاختبار...</small>';
+    btn.disabled = true;
+    try {
+      const fd = new FormData();
+      fd.append('provider', provider);
+      if (apiKey) fd.append('api_key', apiKey);
+      const resp = await fetch('{{ url_for("assistant_test_provider") }}', {
+        method: 'POST',
+        body: fd,
+        headers: {'X-CSRF-Token': window.CSRF_TOKEN || ''}
+      });
+      const data = await resp.json();
+      const cls = data.ok ? 'alert-success' : 'alert-danger';
+      resultDiv.innerHTML = '<div class="alert ' + cls + ' py-1 px-2 mt-1 mb-0 small">' + (data.message || '') + '</div>';
+    } catch (e) {
+      resultDiv.innerHTML = '<div class="alert alert-danger py-1 px-2 mt-1 mb-0 small">خطأ: ' + e.message + '</div>';
+    }
+    btn.disabled = false;
+  });
+});
+</script>
+{% endblock %}

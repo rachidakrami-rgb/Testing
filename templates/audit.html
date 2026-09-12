@@ -1,0 +1,51 @@
+{% extends 'base.html' %}
+{% block title %}سجل العمليات - {{ clinic_name }}{% endblock %}
+{% block page_title %}سجل العمليات (Audit Log){% endblock %}
+{% block breadcrumb %}تتبع كل التعديلات في النظام{% endblock %}
+
+{% block content %}
+<div class="card">
+  <div class="card-header"><i class="fas fa-clipboard-list text-primary"></i> آخر العمليات</div>
+  <div class="card-body" style="padding:0">
+    {% if logs.items %}
+    <div class="table-responsive">
+      <table class="table">
+        <thead><tr><th>التاريخ والوقت</th><th>المستخدم</th><th>العملية</th><th>الكيان</th><th>التفاصيل</th></tr></thead>
+        <tbody>
+          {% for log in logs.items %}
+          <tr>
+            <td>{{ log.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+            <td>{{ log.user }}</td>
+            <td>
+              {% set colors = {'create':'success','update':'primary','delete':'danger','pay':'info','archive':'warning','login':'secondary','restore':'success'} %}
+              <span class="badge bg-{{ colors.get(log.action, 'secondary') }}">{{ log.action }}</span>
+            </td>
+            <td>{{ log.entity }}{% if log.entity_id %} #{{ log.entity_id }}{% endif %}</td>
+            <td>{{ log.details or '-' }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% if logs.pages > 1 %}
+    <nav class="p-3">
+      <ul class="pagination pagination-sm mb-0">
+        <li class="page-item {% if not logs.has_prev %}disabled{% endif %}">
+          <a class="page-link" href="{{ url_for('audit_log_page', page=logs.prev_num) if logs.has_prev else '#' }}">السابق</a>
+        </li>
+        {% for p in logs.iter_pages() %}
+          {% if p %}<li class="page-item {% if p == logs.page %}active{% endif %}"><a class="page-link" href="{{ url_for('audit_log_page', page=p) }}">{{ p }}</a></li>
+          {% else %}<li class="page-item disabled"><span class="page-link">…</span></li>{% endif %}
+        {% endfor %}
+        <li class="page-item {% if not logs.has_next %}disabled{% endif %}">
+          <a class="page-link" href="{{ url_for('audit_log_page', page=logs.next_num) if logs.has_next else '#' }}">التالي</a>
+        </li>
+      </ul>
+    </nav>
+    {% endif %}
+    {% else %}
+    <div class="empty-state"><i class="fas fa-clipboard"></i><p>لا توجد عمليات مسجلة بعد</p></div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

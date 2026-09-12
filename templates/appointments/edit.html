@@ -1,0 +1,72 @@
+{% extends 'base.html' %}
+{% block title %}تعديل موعد - {{ clinic_name }}{% endblock %}
+{% block page_title %}تعديل الموعد{% endblock %}
+{% block breadcrumb %}تغيير التاريخ والوقت وإدارة الطلبات{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-7">
+    <div class="card">
+      <div class="card-header">
+        <i class="fas fa-pen text-primary"></i>
+        تعديل موعد: {{ appt.patient.full_name }}
+        {% if appt.ticket_code %}<code class="ms-2">{{ appt.ticket_code }}</code>{% endif %}
+      </div>
+      <div class="card-body">
+        {% if appt.status == 'pending' %}
+        <div class="alert alert-warning">
+          <i class="fas fa-hourglass-half"></i> هذا طلب حجز إلكتروني بانتظار التأكيد.
+          عدّل الموعد إن لزم ثم أكّده من قائمة المواعيد.
+        </div>
+        {% endif %}
+        {% if appt.is_special %}
+        <div class="alert alert-info">
+          <i class="fas fa-star"></i> جلسة خاصة خارج أوقات العمل —
+          تُكفّل العيادة مصاريف النقل (حدد المبلغ أدناه).
+        </div>
+        {% endif %}
+
+        <form method="post">
+          <div class="row g-3">
+            <div class="col-md-4">
+              <label class="form-label">التاريخ</label>
+              <input type="date" name="date" class="form-control"
+                     value="{{ appt.date.strftime('%Y-%m-%d') }}" required>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">الوقت</label>
+              <input type="time" name="time" class="form-control"
+                     value="{{ appt.time.strftime('%H:%M') }}" required>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">المدة (دقيقة)</label>
+              <input type="number" name="duration" class="form-control"
+                     value="{{ appt.duration or 60 }}" min="15" step="15">
+            </div>
+            {% if appt.is_special %}
+            <div class="col-md-4">
+              <label class="form-label">مصاريف النقل المكفولة (د.ج)</label>
+              <input type="number" name="transport_fee" class="form-control" step="0.01"
+                     value="{{ appt.transport_fee or 0 }}">
+            </div>
+            {% endif %}
+            <div class="col-12">
+              <label class="form-label">سبب الزيارة</label>
+              <input type="text" name="reason" class="form-control" value="{{ appt.reason or '' }}">
+            </div>
+            <div class="col-12">
+              <label class="form-label">ملاحظات</label>
+              <textarea name="notes" class="form-control" rows="2">{{ appt.notes or '' }}</textarea>
+            </div>
+          </div>
+          <div class="mt-4 d-flex gap-2">
+            <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> حفظ التعديلات</button>
+            <a href="{{ url_for('appointments_list', date=appt.date.strftime('%Y-%m-%d')) }}"
+               class="btn btn-outline-secondary">رجوع</a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

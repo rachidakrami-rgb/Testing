@@ -1,0 +1,45 @@
+{% extends 'base.html' %}
+{% block title %}إضافة ملف متابعة - {{ clinic_name }}{% endblock %}
+{% block page_title %}إضافة ملف متابعة{% endblock %}
+{% block breadcrumb %}<a href="{{ url_for('imaging_list') }}">متابعة حالة</a> / إضافة{% endblock %}
+
+{% block content %}
+<div class="card">
+  <div class="card-header"><i class="fas fa-notes-medical text-primary"></i> ملف متابعة الحالة</div>
+  <div class="card-body">
+    <form method="post" enctype="multipart/form-data">
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label class="form-label">المريض *</label>
+          <select name="patient_id" class="form-select" required>
+            <option value="">-- اختر المريض --</option>
+            {% for p in patients %}
+            <option value="{{ p.id }}" {% if preselect == p.id %}selected{% endif %}>{{ p.full_name }} ({{ p.code }})</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">نوع الملف</label>
+          <select name="file_type" class="form-select">
+            <option value="photo">صورة</option>
+            <option value="audio">تسجيل صوتي</option>
+          </select>
+        </div>
+        <div class="col-12">
+          <label class="form-label">الملف *</label>
+          <input type="file" name="file" class="form-control" accept=".png,.jpg,.jpeg,.gif,.bmp,.pdf,.doc,.docx,.mp3,.mp4" required>
+          <small class="text-muted">الأنواع المدعومة: صور، PDF، DOC، JPG، MP3، MP4</small>
+        </div>
+        <div class="col-12">
+          <label class="form-label">الوصف</label>
+          <textarea name="description" class="form-control" rows="2"></textarea>
+        </div>
+      </div>
+      <div class="mt-4">
+        <button type="submit" class="btn btn-primary"><i class="fas fa-upload"></i> رفع الملف</button>
+        <a href="{{ url_for('imaging_list') }}" class="btn btn-outline-secondary">إلغاء</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

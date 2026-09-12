@@ -1,0 +1,169 @@
+{% extends 'base.html' %}
+{% block title %}محادثة {{ patient.full_name }} - {{ clinic_name }}{% endblock %}
+{% block page_title %}محادثة مع {{ patient.full_name }}{% endblock %}
+{% block breadcrumb %}<a href="{{ url_for('messages_list') }}">رسائل المرضى</a> / {{ patient.code }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-8">
+    <div class="card shadow-sm mb-3">
+      <div class="card-body py-2 d-flex justify-content-between flex-wrap align-items-center">
+        <div>
+          <i class="fas fa-user text-primary"></i> <strong>{{ patient.full_name }}</strong>
+          <small class="text-muted">({{ patient.code }})</small>
+        </div>
+        <div class="small text-muted">
+          {% if patient.phone %}📞 {{ patient.phone }}{% endif %}
+          {% if patient.email %} — ✉️ {{ patient.email }}{% endif %}
+          {% if patient.telegram_chat_id %} — <span class="badge bg-info text-dark">تيليجرام مربوط</span>{% endif %}
+          <a href="{{ url_for('patient_view', id=patient.id) }}" class="ms-2">ملف المريض</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="card shadow-sm mb-3">
+      <div class="card-body" id="threadBox" style="max-height:55vh; overflow-y:auto">
+        {% for m in msgs %}
+        <div class="d-flex mb-2 {{ 'justify-content-start' if m.sender == 'patient' else 'justify-content-end' }}" data-msg-id="{{ m.id }}">
+          <div class="p-2 rounded-3 {{ 'bg-light' if m.sender == 'patient' else 'bg-primary text-white' }}"
+               style="max-width:75%">
+            <div style="white-space:pre-wrap">{{ m.body }}</div>
+            <small class="{{ 'text-muted' if m.sender == 'patient' else 'text-white-50' }} d-block mt-1">
+              {{ 'المريض' if m.sender == 'patient' else 'الطبيب' }}
+              — {{ m.created_at.strftime('%Y/%m/%d %H:%M') }}
+              {% if m.channel == 'telegram' %}· تيليجرام{% elif m.channel == 'portal' %}· البوابة{% endif %}
+            </small>
+          </div>
+        </div>
+        {% else %}
+        <div class="empty-state" id="emptyState"><i class="fas fa-comments"></i><p>لا توجد رسائل في هذه المحادثة</p></div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="card shadow-sm">
+      <div class="card-header bg-white">
+        <i class="fas fa-reply text-primary"></i> <strong>الرد على المريض</strong>
+        <small class="text-muted d-block">يصل للمريض عبر تيليجرام أو البريد حسب القنوات المفعلة في الإعدادات، ويبقى محفوظاً في المحادثة</small>
+      </div>
+      <div class="card-body">
+        <form method="post" action="{{ url_for('message_reply', patient_id=patient.id) }}" id="replyForm">
+          <textarea name="body" id="replyBody" class="form-control mb-2" rows="4" required
+                    placeholder="اكتب ردك هنا..."></textarea>
+          <button class="btn btn-primary" id="replyBtn" type="submit">
+            <i class="fas fa-paper-plane"></i> إرسال الرد
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  const PATIENT_ID = {{ patient.id }};
+  const threadBox = document.getElementById('threadBox');
+  const replyForm = document.getElementById('replyForm');
+  const replyBody = document.getElementById('replyBody');
+  const replyBtn = document.getElementById('replyBtn');
+
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+      return {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c];
+    });
+  }
+
+  // إضافة فقاعة رسالة جديدة للمحادثة (للمريض أو الطبيب)
+  function appendMessage(m) {
+    const empty = document.getElementById('emptyState');
+    if (empty) empty.remove();
+    const wrap = document.createElement('div');
+    wrap.className = 'd-flex mb-2 ' + (m.sender === 'patient' ? 'justify-content-start' : 'justify-content-end');
+    wrap.setAttribute('data-msg-id', m.id);
+    const channelTxt = m.channel === 'telegram' ? '· تيليجرام' : (m.channel === 'portal' ? '· البوابة' : '');
+    const dateStr = (m.date || '') + ' ' + (m.time || '');
+    wrap.innerHTML =
+      '<div class="p-2 rounded-3 ' + (m.sender === 'patient' ? 'bg-light' : 'bg-primary text-white') +
+      '" style="max-width:75%">' +
+      '<div style="white-space:pre-wrap">' + esc(m.body) + '</div>' +
+      '<small class="' + (m.sender === 'patient' ? 'text-muted' : 'text-white-50') +
+      ' d-block mt-1">' + (m.sender === 'patient' ? 'المريض' : 'الطبيب') +
+      ' — ' + esc(dateStr) + ' ' + channelTxt + '</small>' +
+      '</div>';
+    threadBox.appendChild(wrap);
+    threadBox.scrollTop = threadBox.scrollHeight;
+  }
+
+  // الاتصال بـ SSE لاستقبال الرسائل اللحظية
+  let es = null;
+  function connectSSE() {
+    try {
+      es = new EventSource('{{ url_for("messages_stream") }}');
+      es.addEventListener('message_new', function (ev) {
+        let m;
+        try { m = JSON.parse(ev.data); } catch (e) { return; }
+        // فقط رسائل هذه المحادثة
+        if (m.patient_id !== PATIENT_ID) return;
+        // تجنّب التكرار إذا كانت الرسالة موجودة (مثلاً رد الطبيب بعد AJAX)
+        if (document.querySelector('[data-msg-id="' + m.id + '"]')) return;
+        appendMessage({
+          id: m.id, sender: m.sender, body: m.body, channel: m.channel,
+          time: m.time, date: ''  // SSE يرسل الوقت فقط؛ التاريخ ضمني اليوم
+        });
+      });
+      es.onerror = function () {
+        // إعادة الاتصال تلقائياً بعد قليل
+        try { es.close(); } catch (e) {}
+        setTimeout(connectSSE, 3000);
+      };
+    } catch (e) {
+      setTimeout(connectSSE, 5000);
+    }
+  }
+  connectSSE();
+
+  // إرسال الرد عبر AJAX (يبقى المستخدم في نفس الصفحة، يظهر الرد لحظياً)
+  replyForm.addEventListener('submit', async function (e) {
+    e.preventDefault();
+    const body = replyBody.value.trim();
+    if (!body) return;
+    replyBtn.disabled = true;
+    replyBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جارٍ الإرسال...';
+    try {
+      const fd = new FormData(replyForm);
+      const resp = await fetch(replyForm.action, {
+        method: 'POST',
+        body: fd,
+        headers: {
+          'X-Requested-With': 'XMLHttpRequest',
+          'X-CSRF-Token': window.CSRF_TOKEN || ''
+        }
+      });
+      if (!resp.ok) throw new Error('HTTP ' + resp.status);
+      const data = await resp.json();
+      if (data && data.ok && data.message) {
+        // أضف الرد فوراً (SSE قد يصله أيضاً لكن dedup يمنع التكرار)
+        const now = new Date();
+        const today = now.getFullYear() + '/' + String(now.getMonth() + 1).padStart(2, '0') + '/' + String(now.getDate()).padStart(2, '0');
+        appendMessage({
+          id: data.message.id, sender: 'doctor', body: data.message.body,
+          channel: data.message.channel, time: data.message.time, date: today
+        });
+        replyBody.value = '';
+      } else {
+        alert('تعذّر إرسال الرد، حاول مجدداً');
+      }
+    } catch (err) {
+      // fallback للنموذج التقليدي إذا فشل AJAX
+      replyForm.removeEventListener('submit', arguments.callee, false);
+      replyForm.submit();
+      return;
+    }
+    replyBtn.disabled = false;
+    replyBtn.innerHTML = '<i class="fas fa-paper-plane"></i> إرسال الرد';
+  });
+})();
+</script>
+{% endblock %}

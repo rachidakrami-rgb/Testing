@@ -1,0 +1,68 @@
+{% extends 'base_public.html' %}
+{% block title %}متابعة التذكرة - {{ clinic_name }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-7">
+    <div class="card shadow-sm mb-4">
+      <div class="card-header bg-white">
+        <i class="fas fa-ticket text-warning"></i> <strong>متابعة حالة الحجز برقم التذكرة</strong>
+      </div>
+      <div class="card-body">
+        <form method="post" class="d-flex gap-2">
+          <input type="text" name="ticket_code" class="form-control form-control-lg"
+                 placeholder="أدخل رقم التذكرة: مثال P-CCA520" required autofocus>
+          <button type="submit" class="btn btn-primary px-4">
+            <i class="fas fa-magnifying-glass"></i> استعلام
+          </button>
+        </form>
+      </div>
+    </div>
+
+    {% if searched and not appt %}
+    <div class="empty-state">
+      <i class="fas fa-circle-question"></i>
+      <p>لم يتم العثور على حجز بهذا الرقم، تأكد من رقم التذكرة وحاول مجدداً</p>
+    </div>
+    {% endif %}
+
+    {% if appt %}
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap">
+          <h5 class="mb-0"><i class="fas fa-calendar-check text-primary"></i> تفاصيل الحجز</h5>
+          <span class="badge badge-{{ appt.status }}" style="font-size:1rem">
+            {{ statuses.get(appt.status, appt.status) }}
+          </span>
+        </div>
+        <table class="table table-borderless mb-0">
+          <tr><td class="text-muted">رقم التذكرة</td><td><strong>{{ appt.ticket_code }}</strong></td></tr>
+          <tr><td class="text-muted">التاريخ</td><td>{{ appt.date.strftime('%d/%m/%Y') }} ({{ weekday_names[appt.date.weekday()] }})</td></tr>
+          <tr><td class="text-muted">الساعة</td><td><strong>{{ appt.time.strftime('%H:%M') }}</strong></td></tr>
+          <tr><td class="text-muted">الطبيب</td><td>{{ doctor_name or clinic_name }}</td></tr>
+          <tr><td class="text-muted">سبب الزيارة</td><td>{{ appt.reason or '-' }}</td></tr>
+          {% if appt.is_special %}
+          <tr><td class="text-muted">نوع الطلب</td>
+              <td><span class="badge badge-special">جلسة خاصة — تُكفّل العيادة مصاريف النقل</span></td></tr>
+          {% endif %}
+        </table>
+
+        {% if appt.status == 'pending' %}
+        <div class="alert alert-warning mb-0 mt-2">
+          <i class="fas fa-hourglass-half"></i> طلبك قيد المراجعة من قبل الطبيب، سيتم تأكيده قريباً بنفس الموعد أو موعد مقترح.
+        </div>
+        {% elif appt.status == 'scheduled' %}
+        <div class="alert alert-success mb-0 mt-2">
+          <i class="fas fa-circle-check"></i> تم تأكيد موعدك، ننتظرك في الموعد المحدد.
+        </div>
+        {% elif appt.status == 'cancelled' %}
+        <div class="alert alert-danger mb-0 mt-2">
+          <i class="fas fa-circle-xmark"></i> تم إلغاء هذا الموعد من طرف العيادة، يمكنك طلب حجز جديد.
+        </div>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

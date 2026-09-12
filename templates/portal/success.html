@@ -1,0 +1,69 @@
+{% extends 'base_public.html' %}
+{% block title %}تم إرسال الطلب - {{ clinic_name }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-6">
+    <div class="ticket-box">
+      <i class="fas fa-circle-check fa-3x text-success"></i>
+      <h3 class="mt-3">
+        {% if special %}تم إرسال طلب الجلسة الخاصة{% else %}تم إرسال طلب الحجز{% endif %}
+      </h3>
+      <p class="mb-1">احفظ رقم التذكرة الخاص بك لمتابعة حالة الحجز:</p>
+      <div class="ticket-code">{{ appt.ticket_code }}</div>
+      <div class="small text-white-50">
+        التاريخ المطلوب: {{ appt.date.strftime('%d/%m/%Y') }} — الساعة {{ appt.time.strftime('%H:%M') }}
+      </div>
+    </div>
+
+    <div class="card mt-4 shadow-sm border-success">
+      <div class="card-body">
+        <h6><i class="fab fa-telegram text-primary"></i> استلم الإشعارات عبر تيليجرام</h6>
+        {% if not appt.patient.telegram_chat_id %}
+        <a href="{{ telegram_bot_link }}?start={{ appt.patient.code }}" target="_blank"
+           class="btn btn-primary btn-lg w-100 mb-3">
+          <i class="fab fa-telegram"></i> افتح البوت الآن
+        </a>
+        <p class="text-muted small mb-2">اضغط الزر لفتح البوت ثم اضغط «START» داخل تيليجرام —
+          سيتم ربط حسابك تلقائياً وتظهر لك تذكرتك، وتصلك تأكيد الموعد وتغييراته وتذكيرات الحضور.
+          أو امسح رمز QR بكاميرا هاتفك:</p>
+        <div class="text-center mb-3">
+          <img src="{{ url_for('portal_link_qr', code=appt.patient.code) }}" alt="رمز QR لربط تيليجرام"
+               class="border rounded bg-white p-2" style="width: 190px; height: 190px;">
+        </div>
+        <p class="text-muted small mb-2">أو أرسل هذا الأمر كما هو للبوت يدوياً:</p>
+        {% else %}
+        <p class="text-muted small mb-2">حسابك مرتبط بالبوت بالفعل وستصلك إشعارات الموعد تلقائياً.</p>
+        {% endif %}
+        <div class="border rounded bg-light p-2 text-center">
+          <div class="fs-5 fw-bold text-dark" style="direction:ltr"><code>/start {{ appt.patient.code }}</code></div>
+        </div>
+        <p class="small text-muted mt-2 mb-0">
+          افتح البوت: <a href="{{ telegram_bot_link }}" target="_blank">{{ telegram_bot_link }}</a><br>
+          <span class="text-success"><i class="fas fa-circle-check"></i></span>
+          كود المريض الخاص بك: <b>{{ appt.patient.code }}</b>
+          — احفظه؛ هو مختلف عن رقم التذكرة ويخدم لربط تيليجرام.
+        </p>
+      </div>
+    </div>
+
+    <div class="card mt-3 shadow-sm">
+      <div class="card-body">
+        <h6><i class="fas fa-circle-info text-primary"></i> ماذا بعد؟</h6>
+        <ol class="text-muted mb-0">
+          <li>يراجع الطبيب طلبك حسب جدول المواعيد.</li>
+          <li>يؤكد الموعد أو يقترح وقتاً بديلاً أو يلغيه.</li>
+          <li>أدخل <b>رقم التذكرة</b> (P-…) من واجهة الدخول لمعرفة حالة الحجز في أي وقت.</li>
+        </ol>
+      </div>
+    </div>
+
+    <div class="text-center mt-4 d-flex gap-2 justify-content-center">
+      <a href="{{ url_for('portal_ticket') }}" class="btn btn-primary">
+        <i class="fas fa-ticket"></i> متابعة التذكرة الآن
+      </a>
+      <a href="{{ url_for('portal_home') }}" class="btn btn-outline-secondary">بوابة المريض</a>
+    </div>
+  </div>
+</div>
+{% endblock %}

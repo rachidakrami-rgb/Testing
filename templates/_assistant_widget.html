@@ -1,0 +1,677 @@
+{# المساعد الذكي العائم — chat widget + ميكروفون + صوت + بطاقات تأكيد #}
+<div id="aiAssistantWidget" class="ai-widget" hidden>
+  {# الزر العائم #}
+  <button class="ai-fab" id="aiFab" type="button" aria-label="المساعد الذكي">
+    <i class="fas fa-robot"></i>
+  </button>
+
+  {# زر الميكروفون العائم أُلغي — الميكروفون متاح داخل لوحة المساعد نفسها (أيقونة 🎤 بجانب حقل الكتابة) #}
+
+  {# لوحة المحادثة #}
+  <div class="ai-panel" id="aiPanel" hidden>
+    <div class="ai-panel-head">
+      <div><i class="fas fa-robot"></i> <strong>المساعد الذكي</strong></div>
+      <div class="ai-head-actions">
+        <button class="ai-clear" id="aiClearBtn" type="button" title="محادثة جديدة">
+          <i class="fas fa-rotate-right"></i>
+        </button>
+        <button class="ai-close" id="aiCloseBtn" type="button" aria-label="إغلاق">&times;</button>
+      </div>
+    </div>
+    <div class="ai-messages" id="aiMessages">
+      <div class="ai-msg ai-welcome">
+        <div class="ai-bubble ai-assistant">
+          مرحباً دكتور 👋 أنا مساعدك الذكي. يمكنني عرض المواعيد، تأكيدها، تأجيلها، وضبط العطلات.
+          <br><br>
+          <small>جرّب: "اعرض مواعيد اليوم" أو "أجّل موعد أحمد ليوم 25 سبتمبر"</small>
+        </div>
+      </div>
+    </div>
+    <div class="ai-input-area">
+      <div class="ai-input-row">
+        <button class="ai-mic-btn" id="aiMicBtn" type="button" title="تحدث">
+          <i class="fas fa-microphone"></i>
+        </button>
+        <textarea id="aiInput" class="ai-input" rows="1"
+                  placeholder="اكتب أو اضغط الميكروفون للتحدث..."></textarea>
+        <button class="ai-send-btn" id="aiSendBtn" type="button" title="إرسال">
+          <i class="fas fa-paper-plane"></i>
+        </button>
+      </div>
+      <div class="ai-recording-bar" id="aiRecordingBar" hidden>
+        <span class="ai-rec-dot"></span> جارٍ التسجيل...
+        <button class="ai-rec-stop" id="aiRecStop" type="button">إيقاف وإرسال</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+.ai-widget {
+  position: fixed;
+  bottom: 20px;
+  inset-inline-start: 20px;
+  z-index: 1600;
+  font-family: 'Cairo', Arial, sans-serif;
+}
+.ai-fab {
+  width: 56px; height: 56px;
+  border-radius: 50%;
+  border: none;
+  background: linear-gradient(135deg, #6366f1, #4f46e5);
+  color: #fff;
+  font-size: 22px;
+  cursor: pointer;
+  box-shadow: 0 6px 20px rgba(99, 102, 241, 0.45);
+  display: flex; align-items: center; justify-content: center;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+.ai-fab:hover { transform: translateY(-2px) scale(1.05); }
+.ai-fab:active { transform: scale(0.95); }
+@keyframes aiMicPulse {
+  0%, 100% { box-shadow: 0 4px 14px rgba(236,72,153,0.4); }
+  50% { box-shadow: 0 4px 24px rgba(236,72,153,0.8); }
+}
+
+.ai-panel {
+  position: absolute;
+  bottom: 76px;
+  inset-inline-start: 0;
+  width: 380px;
+  max-width: calc(100vw - 40px);
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.18);
+  overflow: hidden;
+  display: flex; flex-direction: column;
+  max-height: 70vh;
+  animation: aiIn 0.18s ease-out;
+}
+@keyframes aiIn {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.ai-panel-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  padding: 10px 14px;
+  background: linear-gradient(135deg, #6366f1, #4f46e5);
+  color: #fff;
+}
+.ai-panel-head strong { font-size: 14px; }
+.ai-head-actions { display: flex; gap: 6px; }
+.ai-clear, .ai-close {
+  background: rgba(255,255,255,0.2);
+  border: none; color: #fff;
+  width: 26px; height: 26px;
+  border-radius: 50%;
+  font-size: 14px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+}
+.ai-clear:hover, .ai-close:hover { background: rgba(255,255,255,0.35); }
+
+.ai-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+  background: #f8fafc;
+  scrollbar-width: thin;
+  min-height: 200px;
+}
+.ai-messages::-webkit-scrollbar { width: 6px; }
+.ai-messages::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+
+.ai-msg { margin-bottom: 10px; display: flex; }
+.ai-msg.ai-user { justify-content: flex-end; }
+.ai-msg.ai-assistant { justify-content: flex-start; }
+.ai-bubble {
+  max-width: 80%;
+  padding: 8px 12px;
+  border-radius: 14px;
+  font-size: 13px;
+  line-height: 1.5;
+  word-wrap: break-word;
+  white-space: pre-wrap;
+}
+.ai-msg.ai-user .ai-bubble {
+  background: linear-gradient(135deg, #6366f1, #4f46e5);
+  color: #fff;
+  border-bottom-end-end-radius: 4px;
+}
+.ai-msg.ai-assistant .ai-bubble {
+  background: #fff;
+  color: #0f172a;
+  border: 1px solid #e2e8f0;
+  border-bottom-start-start-radius: 4px;
+}
+.ai-welcome { display: block; }
+
+.ai-typing { display: flex; gap: 4px; padding: 8px 12px; }
+.ai-typing span {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: #94a3b8;
+  animation: aiTyping 1.4s ease-in-out infinite;
+}
+.ai-typing span:nth-child(2) { animation-delay: 0.2s; }
+.ai-typing span:nth-child(3) { animation-delay: 0.4s; }
+@keyframes aiTyping {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+  30% { transform: translateY(-6px); opacity: 1; }
+}
+
+.ai-input-area { border-top: 1px solid #e2e8f0; padding: 8px; }
+.ai-input-row { display: flex; align-items: flex-end; gap: 6px; }
+.ai-mic-btn {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  border: none;
+  background: #f1f5f9;
+  color: #6366f1;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  transition: background 0.15s ease;
+}
+.ai-mic-btn:hover { background: #e0e7ff; }
+.ai-mic-btn.recording { background: #ef4444; color: #fff; animation: aiMicPulse 1s ease-in-out infinite; }
+.ai-input {
+  flex: 1;
+  border: 1px solid #cbd5e1;
+  border-radius: 12px;
+  padding: 8px 12px;
+  font-size: 13px;
+  font-family: inherit;
+  resize: none;
+  max-height: 80px;
+  outline: none;
+  line-height: 1.4;
+}
+.ai-input:focus { border-color: #6366f1; }
+.ai-send-btn {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  border: none;
+  background: linear-gradient(135deg, #6366f1, #4f46e5);
+  color: #fff;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.ai-send-btn:hover { transform: scale(1.08); }
+.ai-send-btn:disabled { opacity: 0.5; }
+
+.ai-recording-bar {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 10px;
+  background: #fef2f2;
+  border-radius: 8px;
+  margin-top: 6px;
+  font-size: 12px;
+  color: #ef4444;
+}
+.ai-rec-dot {
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  background: #ef4444;
+  animation: aiRecPulse 1s ease-in-out infinite;
+}
+@keyframes aiRecPulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+.ai-rec-stop {
+  margin-inline-start: auto;
+  background: #ef4444; color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.ai-confirm-card {
+  max-width: 90%;
+  padding: 12px;
+  border-radius: 12px;
+  background: #fffbeb;
+  border: 1px solid #fcd34d;
+  font-size: 13px;
+  margin-bottom: 10px;
+}
+.ai-confirm-card .ai-card-title {
+  font-weight: 700;
+  margin-bottom: 6px;
+  color: #92400e;
+}
+.ai-confirm-card .ai-card-details {
+  font-size: 12px;
+  color: #78350f;
+  margin-bottom: 8px;
+}
+.ai-confirm-card .ai-card-details div { margin: 2px 0; }
+.ai-confirm-buttons { display: flex; gap: 6px; flex-wrap: wrap; }
+.ai-btn-exec {
+  background: #16a34a; color: #fff;
+  border: none; border-radius: 8px;
+  padding: 6px 14px; font-size: 12px; font-weight: 600;
+  cursor: pointer;
+}
+.ai-btn-exec:hover { background: #15803d; }
+.ai-btn-cancel {
+  background: #ef4444; color: #fff;
+  border: none; border-radius: 8px;
+  padding: 6px 14px; font-size: 12px; font-weight: 600;
+  cursor: pointer;
+}
+.ai-btn-cancel:hover { background: #dc2626; }
+.ai-btn-voice-yes {
+  background: #6366f1; color: #fff;
+  border: none; border-radius: 8px;
+  padding: 6px 14px; font-size: 12px; font-weight: 600;
+  cursor: pointer;
+}
+.ai-btn-voice-yes:hover { background: #4f46e5; }
+.ai-btn-voice-yes.recording { background: #ef4444; animation: aiMicPulse 1s ease-in-out infinite; }
+.ai-card-pending { font-size: 11px; color: #6b7280; margin-top: 6px; }
+
+@media (max-width: 576px) {
+  .ai-panel { width: calc(100vw - 40px); max-height: 75vh; }
+}
+</style>
+
+<script>
+(function () {
+  const widget = document.getElementById('aiAssistantWidget');
+  if (!widget) return;
+
+  const fab = document.getElementById('aiFab');
+  const panel = document.getElementById('aiPanel');
+  const closeBtn = document.getElementById('aiCloseBtn');
+  const clearBtn = document.getElementById('aiClearBtn');
+  const messagesEl = document.getElementById('aiMessages');
+  const inputEl = document.getElementById('aiInput');
+  const sendBtn = document.getElementById('aiSendBtn');
+  const micBtn = document.getElementById('aiMicBtn');
+  const recBar = document.getElementById('aiRecordingBar');
+  const recStop = document.getElementById('aiRecStop');
+
+  // ===================== استمرارية المحادثة عبر تحديث الصفحة/تبديل التبويب =====================
+  // نفس CLIENT_ID يُحفظ في localStorage (بدل توليد رقم عشوائي جديد في كل تحميل)
+  // حتى يبقى السجل مرتبطاً بنفس الجلسة على الخادم، ونحفظ نص الفقاعات المعروضة
+  // محلياً لإعادة رسمها فوراً دون انتظار الخادم. لا تُمسح المحادثة إلا بزر
+  // "محادثة جديدة".
+  const AI_STORAGE_KEY = 'ai_assistant_client_id';
+  const AI_MESSAGES_KEY = 'ai_assistant_messages';
+  const AI_PANEL_KEY = 'ai_assistant_panel_open';
+
+  let CLIENT_ID = localStorage.getItem(AI_STORAGE_KEY);
+  if (!CLIENT_ID) {
+    CLIENT_ID = 'web_' + Math.random().toString(36).slice(2, 10);
+    localStorage.setItem(AI_STORAGE_KEY, CLIENT_ID);
+  }
+  let panelOpen = false;
+  let mediaRecorder = null;
+  let audioChunks = [];
+  let isRecording = false;
+  let pendingVoiceYes = null;  // {tool, args} when waiting for "yes" by voice
+
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+    });
+  }
+
+  function openPanel() { panel.hidden = false; panelOpen = true; localStorage.setItem(AI_PANEL_KEY, '1'); setTimeout(() => inputEl.focus(), 100); }
+  function closePanel() { panel.hidden = true; panelOpen = false; localStorage.setItem(AI_PANEL_KEY, '0'); stopRecording(); }
+  fab.addEventListener('click', () => panelOpen ? closePanel() : openPanel());
+  closeBtn.addEventListener('click', closePanel);
+
+  clearBtn.addEventListener('click', async () => {
+    if (!confirm('بدء محادثة جديدة؟')) return;
+    messagesEl.innerHTML = '<div class="ai-msg ai-welcome"><div class="ai-bubble ai-assistant">محادثة جديدة ✨ كيف أساعدك؟</div></div>';
+    localStorage.removeItem(AI_MESSAGES_KEY);  // امسح السجل المحلي المحفوظ فقط الآن (بضغط الزر)
+    try {
+      await fetch('/api/assistant/clear', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json', 'X-CSRF-Token': window.CSRF_TOKEN || ''},
+        body: JSON.stringify({client_id: CLIENT_ID})
+      });
+    } catch (e) {}
+  });
+
+  function saveMessagesToStorage() {
+    try {
+      const nodes = Array.from(messagesEl.querySelectorAll('.ai-msg:not(.ai-welcome)'))
+        .filter(el => el.id !== 'aiTypingIndicator' && el.querySelector('.ai-bubble') && !el.querySelector('.ai-confirm-card'));
+      const saved = nodes.map(el => ({
+        role: el.classList.contains('ai-user') ? 'user' : 'assistant',
+        text: el.querySelector('.ai-bubble').textContent
+      }));
+      localStorage.setItem(AI_MESSAGES_KEY, JSON.stringify(saved.slice(-40)));
+    } catch (e) {}
+  }
+
+  function appendMessage(role, text, skipSave) {
+    const wrap = document.createElement('div');
+    wrap.className = 'ai-msg ai-' + (role === 'user' ? 'user' : 'assistant');
+    wrap.innerHTML = '<div class="ai-bubble ai-' + (role === 'user' ? 'user' : 'assistant') + '">' + esc(text) + '</div>';
+    messagesEl.appendChild(wrap);
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+    if (!skipSave) saveMessagesToStorage();
+    return wrap;
+  }
+
+  // استعادة المحادثة المحفوظة محلياً (إن وُجدت) عند تحميل الصفحة
+  (function restoreConversation() {
+    try {
+      const raw = localStorage.getItem(AI_MESSAGES_KEY);
+      if (raw) {
+        const saved = JSON.parse(raw);
+        if (Array.isArray(saved) && saved.length) {
+          messagesEl.querySelector('.ai-welcome')?.remove();
+          saved.forEach(m => appendMessage(m.role, m.text, true));
+        }
+      }
+    } catch (e) {}
+    // أعد فتح اللوحة تلقائياً إذا كانت مفتوحة قبل التحديث/تبديل التبويب
+    if (localStorage.getItem(AI_PANEL_KEY) === '1') openPanel();
+  })();
+
+  function appendTyping() {
+    const wrap = document.createElement('div');
+    wrap.className = 'ai-msg ai-assistant';
+    wrap.id = 'aiTypingIndicator';
+    wrap.innerHTML = '<div class="ai-bubble ai-assistant"><div class="ai-typing"><span></span><span></span><span></span></div></div>';
+    messagesEl.appendChild(wrap);
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+  }
+  function removeTyping() {
+    const t = document.getElementById('aiTypingIndicator');
+    if (t) t.remove();
+  }
+
+  function appendConfirmCard(message, preview, tool, args) {
+    const card = document.createElement('div');
+    card.className = 'ai-msg ai-assistant';
+    const detailsHtml = preview ? Object.entries(preview).map(([k,v]) => `<div><b>${esc(k)}:</b> ${esc(v)}</div>`).join('') : '';
+    card.innerHTML = `
+      <div class="ai-confirm-card">
+        <div class="ai-card-title">🤖 ${esc(message)}</div>
+        ${detailsHtml ? '<div class="ai-card-details">' + detailsHtml + '</div>' : ''}
+        <div class="ai-confirmButtons">
+          <button class="ai-btn-exec" data-tool="${esc(tool)}">✅ تنفيذ</button>
+          <button class="ai-btn-cancel">❌ إلغاء</button>
+          <button class="ai-btn-voice-yes" title="قل نعم للتأكيد">🎤 قل نعم</button>
+        </div>
+        <div class="ai-card-pending" id="aiCardPending"></div>
+      </div>`;
+    messagesEl.appendChild(card);
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+
+    const execBtn = card.querySelector('.ai-btn-exec');
+    const cancelBtn = card.querySelector('.ai-btn-cancel');
+    const voiceYesBtn = card.querySelector('.ai-btn-voice-yes');
+    const pendingEl = card.querySelector('#aiCardPending');
+    const cardEl = card.querySelector('.ai-confirm-card');
+
+    execBtn.addEventListener('click', () => executeTool(tool, args, cardEl));
+    cancelBtn.addEventListener('click', () => {
+      cardEl.innerHTML = '<div class="ai-card-title">✖ تم الإلغاء</div>';
+      pendingVoiceYes = null;
+    });
+    voiceYesBtn.addEventListener('click', () => {
+      pendingVoiceYes = {tool, args, cardEl, pendingEl};
+      voiceYesBtn.classList.add('recording');
+      voiceYesBtn.textContent = '🎤 استمع...';
+      startRecording();
+    });
+  }
+
+  async function sendMessage(text, viaVoice) {
+    if (!text || !text.trim()) return;
+    text = text.trim();
+    speakReply = !!viaVoice;  // يُنطق الرد فقط إذا كانت هذه الرسالة عبر الميكروفون
+    appendMessage('user', text);
+    inputEl.value = '';
+    inputEl.style.height = 'auto';
+    appendTyping();
+    try {
+      const resp = await fetch('/api/assistant/chat', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json', 'X-CSRF-Token': window.CSRF_TOKEN || ''},
+        body: JSON.stringify({message: text, client_id: CLIENT_ID})
+      });
+      removeTyping();
+      if (!resp.ok) {
+        appendMessage('assistant', '⚠️ خطأ في الاتصال (' + resp.status + ')');
+        return;
+      }
+      const data = await resp.json();
+      handleAssistantResponse(data);
+    } catch (e) {
+      removeTyping();
+      appendMessage('assistant', '⚠️ خطأ في الشبكة: ' + e.message);
+    }
+  }
+
+  async function handleAssistantResponse(data) {
+    if (data.type === 'error') {
+      appendMessage('assistant', '⚠️ ' + (data.message || 'خطأ'));
+      return;
+    }
+    if (data.type === 'text') {
+      appendMessage('assistant', data.message || '');
+      if (speakReply) playTTS(data.message || '');
+      return;
+    }
+    if (data.type === 'tool_call') {
+      appendConfirmCard(data.message || data.summary || '', data.preview || {}, data.tool, data.args || {});
+      if (speakReply) playTTS(data.message || data.summary || '');
+      return;
+    }
+  }
+
+  async function executeTool(tool, args, cardEl, viaVoice) {
+    speakReply = !!viaVoice;  // يُنطق فقط إذا أُكِّد التنفيذ بالصوت ("قل نعم")
+    const pending = cardEl.querySelector('.ai-card-pending');
+    pending.textContent = '⏳ جارٍ التنفيذ...';
+    try {
+      const resp = await fetch('/api/assistant/execute', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json', 'X-CSRF-Token': window.CSRF_TOKEN || ''},
+        body: JSON.stringify({tool, args, client_id: CLIENT_ID})
+      });
+      const data = await resp.json();
+      const icon = data.success ? '✅' : '⚠️';
+      cardEl.innerHTML = `<div class="ai-card-title">${icon} ${esc(data.message || 'تم.')}</div>`;
+      appendMessage('assistant', data.message || 'تم.');
+      if (speakReply) playTTS(data.message || 'تم.');
+      pendingVoiceYes = null;
+    } catch (e) {
+      pending.textContent = '⚠️ خطأ: ' + e.message;
+    }
+  }
+
+  // ===================== الصوت: TTS (نطق رد المساعد عبر صوت عربي حقيقي من الخادم) =====================
+  // نطلب من الخادم توليد ملف mp3 بصوت عربي ثم نُشغّله بعنصر <audio>.
+  // نستخدم رقماً تسلسلياً (ttsSeq) لضمان تشغيل صوت واحد فقط في كل لحظة:
+  // إذا وصل رد صوت أقدم بعد رد أحدث منه (بسبب اختلاف زمن الشبكة)، يُتجاهل الأقدم
+  // بدل تشغيله فوق الصوت الحالي (يمنع تداخل الأصوات).
+  // كما نُنطق الرد فقط إذا تحدّث الطبيب بالميكروفون (speakReply)، وليس عند الكتابة.
+  let ttsEnabled = true;
+  let currentAudio = null;
+  let ttsSeq = 0;
+  let speakReply = false;
+
+  async function playTTS(text) {
+    if (!text || !text.trim()) return;
+    if (!ttsEnabled) return;
+    const mySeq = ++ttsSeq;
+    try {
+      const resp = await fetch('/api/assistant/voice/tts', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json', 'X-CSRF-Token': window.CSRF_TOKEN || ''},
+        body: JSON.stringify({text: text.slice(0, 800)})
+      });
+      if (mySeq !== ttsSeq) return;  // طلب أحدث سبقنا — تجاهل هذا الرد
+      if (!resp.ok) {
+        let detail = '';
+        try { const errJson = await resp.json(); detail = errJson.error || ''; } catch (e) {}
+        console.error('فشل توليد الصوت من الخادم:', resp.status, detail);
+        appendMessage('assistant', '🔇 (تشخيص) فشل الصوت: HTTP ' + resp.status + (detail ? ' — ' + detail : ''));
+        return;
+      }
+      const blob = await resp.blob();
+      if (mySeq !== ttsSeq) return;  // طلب أحدث سبقنا أثناء التحميل — تجاهل
+      if (currentAudio) { try { currentAudio.pause(); } catch (e) {} }
+      const url = URL.createObjectURL(blob);
+      currentAudio = new Audio(url);
+      currentAudio.play().catch(() => {});
+      currentAudio.onended = () => URL.revokeObjectURL(url);
+    } catch (e) { /* تجاهل أخطاء TTS */ }
+  }
+
+  // ===================== الصوت: STT (تسجيل + إرسال) =====================
+  async function startRecording() {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({audio: true});
+      audioChunks = [];
+      mediaRecorder = new MediaRecorder(stream);
+      mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) audioChunks.push(e.data); };
+      mediaRecorder.onstop = () => {
+        stream.getTracks().forEach(t => t.stop());
+        const blob = new Blob(audioChunks, {type: 'audio/webm'});
+        sendAudioForSTT(blob);
+      };
+      mediaRecorder.start();
+      isRecording = true;
+      micBtn.classList.add('recording');
+      recBar.hidden = false;
+    } catch (e) {
+      alert('تعذّر الوصول للميكروفون: ' + e.message);
+      resetRecordingUI();
+    }
+  }
+
+  function stopRecording() {
+    if (!isRecording || !mediaRecorder) { resetRecordingUI(); return; }
+    if (mediaRecorder.state !== 'inactive') mediaRecorder.stop();
+    isRecording = false;
+    micBtn.classList.remove('recording');
+    recBar.hidden = true;
+  }
+
+  function resetRecordingUI() {
+    isRecording = false;
+    micBtn.classList.remove('recording');
+    recBar.hidden = true;
+  }
+
+  async function sendAudioForSTT(blob) {
+    const reader = new FileReader();
+    reader.onloadend = async () => {
+      const base64 = reader.result.split(',')[1];
+      try {
+        const resp = await fetch('/api/assistant/voice/stt', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json', 'X-CSRF-Token': window.CSRF_TOKEN || ''},
+          body: JSON.stringify({audio: base64})
+        });
+        const data = await resp.json();
+        if (data.error) {
+          // إذا الخادم أشار لاستخدام fallback في المتصفح (Web Speech API)
+          if (data.use_browser_fallback && 'webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+            console.log('Groq ASR فشل، استخدم Web Speech API');
+            // أعد التسجيل مع Web Speech API
+            startBrowserSpeechRecognition();
+            return;
+          }
+          alert('خطأ في التعرف على الصوت: ' + data.error);
+          return;
+        }
+        const text = (data.text || '').trim();
+        if (!text) { alert('لم أسمع شيئاً. حاول مرة أخرى.'); return; }
+        // إذا في وضع "قل نعم"
+        if (pendingVoiceYes) {
+          handleVoiceYesResponse(text);
+          return;
+        }
+        // وإلا ضع النص في حقل الإدخال وأرسله (عبر الصوت)
+        inputEl.value = text;
+        sendMessage(text, true);
+      } catch (e) {
+        // خطأ شبكة — جرّب Web Speech API كـ fallback
+        if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+          startBrowserSpeechRecognition();
+        } else {
+          alert('خطأ في الشبكة: ' + e.message);
+        }
+      }
+    };
+    reader.readAsDataURL(blob);
+  }
+
+  // ===================== Web Speech API fallback للـ ASR =====================
+  // يُستخدم إذا فشل Groq Whisper (مثلاً مفتاح غير متاح أو خطأ شبكة)
+  let browserRecognition = null;
+  function startBrowserSpeechRecognition() {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) {
+      alert('متصفحك لا يدعم التعرف على الصوت. استخدم Chrome أو Edge.');
+      return;
+    }
+    if (browserRecognition) { try { browserRecognition.stop(); } catch(e){} }
+    browserRecognition = new SR();
+    browserRecognition.lang = 'ar-SA';
+    browserRecognition.interimResults = false;
+    browserRecognition.maxAlternatives = 1;
+    micBtn.classList.add('recording');
+    recBar.hidden = false;
+    browserRecognition.onresult = (event) => {
+      const text = event.results[0][0].transcript;
+      if (pendingVoiceYes) {
+        handleVoiceYesResponse(text);
+      } else {
+        inputEl.value = text;
+        sendMessage(text, true);
+      }
+    };
+    browserRecognition.onerror = (event) => {
+      alert('خطأ في التعرف على الصوت: ' + (event.error || 'غير معروف'));
+    };
+    browserRecognition.onend = () => {
+      micBtn.classList.remove('recording');
+      recBar.hidden = true;
+    };
+    browserRecognition.start();
+  }
+
+  function handleVoiceYesResponse(text) {
+    const p = pendingVoiceYes;
+    const btn = document.querySelector('.ai-btn-voice-yes.recording');
+    if (btn) { btn.classList.remove('recording'); btn.textContent = '🎤 قل نعم'; }
+    pendingVoiceYes = null;
+    stopRecording();
+    const lower = text.toLowerCase();
+    if (lower.includes('نعم') || lower.includes('أيوة') || lower.includes('ايوه') || lower.includes('yes') || lower.includes('موافق') || lower.includes('تمام')) {
+      executeTool(p.tool, p.args, p.cardEl, true);
+    } else if (lower.includes('لا') || lower.includes('no') || lower.includes('إلغاء') || lower.includes('cancel')) {
+      p.cardEl.innerHTML = '<div class="ai-card-title">✖ تم الإلغاء بالصوت</div>';
+    } else {
+      p.pending.textContent = '⚠️ لم أفهم ردك. اضغط زر التنفيذ أو الإلغاء.';
+    }
+  }
+
+  // ===================== ربط الأحداث =====================
+  sendBtn.addEventListener('click', () => sendMessage(inputEl.value));
+  inputEl.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(inputEl.value); }
+  });
+  inputEl.addEventListener('input', () => {
+    inputEl.style.height = 'auto';
+    inputEl.style.height = Math.min(inputEl.scrollHeight, 80) + 'px';
+  });
+  micBtn.addEventListener('click', () => { isRecording ? stopRecording() : startRecording(); });
+  recStop.addEventListener('click', stopRecording);
+
+  widget.hidden = false;
+})();
+</script>

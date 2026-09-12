@@ -1,0 +1,233 @@
+{% extends 'base.html' %}
+{% block title %}{{ patient.full_name }} - {{ clinic_name }}{% endblock %}
+{% block page_title %}{{ patient.full_name }}{% endblock %}
+{% block breadcrumb %}<a href="{{ url_for('patients_list') }}">المرضى</a> / {{ patient.code }}{% endblock %}
+
+{% block content %}
+<!-- بطاقة معلومات المريض -->
+<div class="card mb-3">
+  <div class="card-body">
+    <div class="d-flex align-items-center gap-3 flex-wrap">
+      <div class="avatar">{{ patient.first_name[0] }}{{ patient.last_name[0] }}</div>
+      <div class="flex-grow-1">
+        <h4 class="mb-1">{{ patient.full_name }}</h4>
+        <span class="badge bg-light text-dark">{{ patient.code }}</span>
+        {% if patient.gender %}<span class="text-muted">• {{ patient.gender }}</span>{% endif %}
+        {% if patient.age %}<span class="text-muted">• {{ patient.age }} سنة</span>{% endif %}
+      </div>
+      <div class="d-flex gap-2">
+        <a href="{{ url_for('appointment_new', patient_id=patient.id) }}" class="btn btn-sm btn-outline-primary"><i class="fas fa-calendar-plus"></i> موعد</a>
+        <a href="{{ url_for('visit_new', patient_id=patient.id) }}" class="btn btn-sm btn-outline-success"><i class="fas fa-clipboard-list"></i> زيارة</a>
+        <a href="{{ url_for('imaging_new', patient_id=patient.id) }}" class="btn btn-sm btn-outline-info"><i class="fas fa-notes-medical"></i> متابعة</a>
+        <a href="{{ url_for('billing_new', patient_id=patient.id) }}" class="btn btn-sm btn-outline-warning"><i class="fas fa-file-invoice"></i> فاتورة</a>
+        <a href="{{ url_for('patient_edit', id=patient.id) }}" class="btn btn-sm btn-outline-secondary"><i class="fas fa-edit"></i> تعديل</a>
+      </div>
+    </div>
+    <hr>
+    <div class="row g-2">
+      <div class="col-md-3"><small class="text-muted d-block"><i class="fas fa-phone"></i> الهاتف</small><strong>{{ patient.phone or '-' }}</strong></div>
+      <div class="col-md-3"><small class="text-muted d-block"><i class="fas fa-envelope"></i> البريد</small><strong>{{ patient.email or '-' }}</strong></div>
+      <div class="col-md-3"><small class="text-muted d-block"><i class="fab fa-telegram"></i> تيليجرام</small>
+        {% if patient.telegram_chat_id %}<span class="badge bg-success">مرتبط ✓</span>{% else %}<span class="text-muted">غير مرتبط</span>{% endif %}
+      </div>
+      <div class="col-md-3"><small class="text-muted d-block"><i class="fas fa-briefcase"></i> الوظيفة</small><strong>{{ patient.job or '-' }}</strong></div>
+      <div class="col-md-3"><small class="text-muted d-block"><i class="fas fa-heart"></i> الحالة الاجتماعية</small><strong>{{ patient.marital_status or '-' }}</strong></div>
+      <div class="col-md-3"><small class="text-muted d-block"><i class="fas fa-map-marker-alt"></i> العنوان</small><strong>{{ patient.address or '-' }}</strong></div>
+      <div class="col-md-3"><small class="text-muted d-block"><i class="fas fa-birthday-cake"></i> تاريخ الميلاد</small><strong>{{ patient.birth_date.strftime('%Y-%m-%d') if patient.birth_date else '-' }}</strong></div>
+      <div class="col-md-3"><small class="text-muted d-block"><i class="fas fa-user-shield"></i> جهة الطوارئ</small><strong>{{ patient.emergency_contact or '-' }} {{ patient.emergency_phone or '' }}</strong></div>
+    </div>
+    {% if patient.medical_history or patient.chronic_diseases or patient.current_medications %}
+    <hr>
+    <div class="row g-2">
+      {% if patient.medical_history %}<div class="col-md-4"><small class="text-muted d-block">التاريخ المرضي</small>{{ patient.medical_history }}</div>{% endif %}
+      {% if patient.chronic_diseases %}<div class="col-md-4"><small class="text-muted d-block">الأمراض المزمنة</small>{{ patient.chronic_diseases }}</div>{% endif %}
+      {% if patient.current_medications %}<div class="col-md-4"><small class="text-muted d-block">الأدوية الحالية</small>{{ patient.current_medications }}</div>{% endif %}
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+{% if not patient.telegram_chat_id %}
+<!-- بطاقة ربط تيليجرام: رمز QR + كود المريض (تظهر للمريض غير المرتبط فقط) -->
+<div class="card mb-3 border-info">
+  <div class="card-body">
+    <div class="row align-items-center g-3">
+      <div class="col-auto">
+        <img src="{{ url_for('patient_qr', id=patient.id) }}" alt="QR"
+             class="border rounded p-1 bg-white" style="width:150px;height:150px">
+      </div>
+      <div class="col">
+        <h5 class="mb-1"><i class="fab fa-telegram text-primary"></i>
+          هذا المريض غير مرتبط ببوت تيليجرام — اربطه عبر رمز QR</h5>
+        <p class="small text-muted mb-2">اطلب من المريض مسح الرمز بكاميرا هاتفه (أو افتح الرابط على هاتفه) — سيفتح البوت ويرسل أمر الربط تلقائياً، فتصله الإشعارات والرسائل عبر تيليجرام مباشرة.</p>
+        <div class="row g-2">
+          <div class="col-md-5">
+            <small class="text-muted d-block mb-1">كود المريض (يُرسل بعد /start إن أُدخل يدوياً)</small>
+            <div class="input-group input-group-sm" dir="ltr">
+              <input type="text" class="form-control text-center fw-bold" id="tgPatientCode" value="{{ patient.code }}" readonly>
+              <button class="btn btn-outline-primary" type="button" onclick="copyTgField('tgPatientCode', this)" title="نسخ"><i class="fas fa-copy"></i></button>
+            </div>
+          </div>
+          <div class="col-md-7">
+            <small class="text-muted d-block mb-1">رابط الربط العميق</small>
+            <div class="input-group input-group-sm" dir="ltr">
+              <input type="text" class="form-control" id="tgDeepLink" value="{{ telegram_bot_link }}?start={{ patient.code }}" readonly>
+              <button class="btn btn-outline-primary" type="button" onclick="copyTgField('tgDeepLink', this)" title="نسخ"><i class="fas fa-copy"></i></button>
+            </div>
+          </div>
+        </div>
+        <div class="mt-2 d-flex gap-2 flex-wrap">
+          <a href="{{ url_for('patient_qr', id=patient.id, download=1) }}" class="btn btn-sm btn-outline-primary"><i class="fas fa-download"></i> حفظ الرمز PNG (للطباعة)</a>
+          <a href="{{ telegram_bot_link }}" target="_blank" class="btn btn-sm btn-outline-secondary"><i class="fab fa-telegram"></i> فتح البوت</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+function copyTgField(id, btn) {
+  var el = document.getElementById(id);
+  var done = function () {
+    var old = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-check text-success"></i>';
+    setTimeout(function () { btn.innerHTML = old; }, 1200);
+  };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(el.value).then(done);
+  } else { el.select(); try { document.execCommand('copy'); } catch (e) {} done(); }
+}
+</script>
+{% endif %}
+
+<!-- تبويبات -->
+<ul class="nav nav-tabs mb-3">
+  <li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#visits">الزيارات ({{ visits|length }})</a></li>
+  <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#appointments">المواعيد ({{ appointments|length }})</a></li>
+  <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#images">متابعة حالة ({{ images|length }})</a></li>
+  <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#invoices">الفواتير ({{ invoices|length }})</a></li>
+</ul>
+
+<div class="tab-content">
+  <!-- الزيارات -->
+  <div class="tab-pane fade show active" id="visits">
+    <div class="card">
+      <div class="card-body" style="padding:0">
+        {% if visits %}
+        <table class="table">
+          <thead><tr><th>التاريخ</th><th>الشكوى</th><th>التشخيص</th><th>الرسوم</th><th>إجراءات</th></tr></thead>
+          <tbody>
+            {% for v in visits %}
+            <tr>
+              <td>{{ v.visit_date.strftime('%Y-%m-%d') }}</td>
+              <td>{{ v.chief_complaint or '-' }}</td>
+              <td>{{ v.diagnosis or '-' }}</td>
+              <td>{{ v.fee }} د.ج</td>
+              <td>
+                <a href="{{ url_for('visit_view', id=v.id) }}" class="btn btn-sm btn-outline-primary"><i class="fas fa-eye"></i></a>
+                <form method="post" action="{{ url_for('visit_delete', id=v.id) }}" class="d-inline">
+                  <button class="btn btn-sm btn-outline-danger btn-delete"><i class="fas fa-trash"></i></button>
+                </form>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <div class="empty-state"><i class="fas fa-clipboard"></i><p>لا توجد زيارات مسجلة</p></div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- المواعيد -->
+  <div class="tab-pane fade" id="appointments">
+    <div class="card">
+      <div class="card-body" style="padding:0">
+        {% if appointments %}
+        <table class="table">
+          <thead><tr><th>التاريخ</th><th>الوقت</th><th>السبب</th><th>الحالة</th></tr></thead>
+          <tbody>
+            {% for a in appointments %}
+            <tr>
+              <td>{{ a.date.strftime('%Y-%m-%d') }}</td>
+              <td>{{ a.time.strftime('%H:%M') }}</td>
+              <td>{{ a.reason or '-' }}</td>
+              <td><span class="badge badge-{{ a.status }}">{{ {'scheduled':'مجدول','completed':'مكتمل','cancelled':'ملغي','no_show':'لم يحضر'}.get(a.status, a.status) }}</span></td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <div class="empty-state"><i class="fas fa-calendar"></i><p>لا توجد مواعيد</p></div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- متابعة حالة -->
+  <div class="tab-pane fade" id="images">
+    <div class="card">
+      <div class="card-body">
+        {% if images %}
+        <div class="row g-3">
+          {% for img in images %}
+          <div class="col-md-3 col-sm-6">
+            <div class="card">
+              <div class="card-body text-center p-2">
+                {% if img.filename.lower().endswith(('.png','.jpg','.jpeg','.gif','.bmp')) %}
+                <img src="{{ url_for('uploaded_file', filename=img.filename) }}" class="img-fluid rounded mb-2" style="max-height:120px">
+                {% elif img.filename.lower().endswith(('.mp3','.mp4')) %}
+                <i class="fas fa-microphone-alt mb-2" style="font-size:2.5rem;color:#4f46e5"></i>
+                <audio controls class="w-100 mb-2"><source src="{{ url_for('uploaded_file', filename=img.filename) }}">متصفحك لا يدعم تشغيل الصوت</audio>
+                {% else %}
+                <i class="fas fa-file-medical" style="font-size:2.5rem;color:#4f46e5"></i>
+                {% endif %}
+                <small class="d-block text-truncate">{{ img.original_name }}</small>
+                <small class="text-muted">{{ {'photo':'صورة','audio':'تسجيل صوتي'}.get(img.file_type, 'ملف') }}</small>
+                <div class="mt-1">
+                  <a href="{{ url_for('uploaded_file', filename=img.filename) }}" class="btn btn-sm btn-outline-primary" target="_blank"><i class="fas fa-download"></i></a>
+                  <form method="post" action="{{ url_for('imaging_delete', id=img.id) }}" class="d-inline">
+                    <button class="btn btn-sm btn-outline-danger btn-delete"><i class="fas fa-trash"></i></button>
+                  </form>
+                </div>
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state"><i class="fas fa-notes-medical"></i><p>لا توجد ملفات متابعة</p></div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- الفواتير -->
+  <div class="tab-pane fade" id="invoices">
+    <div class="card">
+      <div class="card-body" style="padding:0">
+        {% if invoices %}
+        <table class="table">
+          <thead><tr><th>رقم الفاتورة</th><th>التاريخ</th><th>المبلغ</th><th>المدفوع</th><th>المتبقي</th><th>الحالة</th><th></th></tr></thead>
+          <tbody>
+            {% for inv in invoices %}
+            <tr>
+              <td>{{ inv.invoice_number }}</td>
+              <td>{{ inv.invoice_date.strftime('%Y-%m-%d') }}</td>
+              <td>{{ inv.amount }} د.ج</td>
+              <td>{{ inv.paid_amount }} د.ج</td>
+              <td>{{ inv.balance }} د.ج</td>
+              <td><span class="badge badge-{{ inv.status }}">{{ {'paid':'مسددة','partial':'جزئي','unpaid':'غير مسددة'}.get(inv.status, inv.status) }}</span></td>
+              <td><a href="{{ url_for('billing_view', id=inv.id) }}" class="btn btn-sm btn-outline-primary"><i class="fas fa-eye"></i></a></td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <div class="empty-state"><i class="fas fa-file-invoice"></i><p>لا توجد فواتير</p></div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
